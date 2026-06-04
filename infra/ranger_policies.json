@@ -113,12 +113,12 @@
       "name": "sbi-ozone-volume-policy",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "systest: firstvolume 볼륨 레벨 권한",
+      "description": "systest: firstvolume 및 s3v(S3 Gateway) 볼륨 레벨 권한",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "volume": {
-          "values": ["firstvolume"],
+          "values": ["firstvolume", "s3v"],
           "isExcludes": false,
           "isRecursive": false
         }
@@ -153,13 +153,13 @@
       "name": "sbi-ozone-raw-policy",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "Spark Stream: sbi-raw Ozone 버킷 읽기/쓰기",
+      "description": "Spark Stream: s3v/sbi-raw 버킷 읽기/쓰기 (s3a://sbi-raw/)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["firstvolume"], "isExcludes": false, "isRecursive": false },
-        "bucket": { "values": ["sbi-raw"],     "isExcludes": false, "isRecursive": false },
-        "key":    { "values": ["*"],           "isExcludes": false, "isRecursive": true  }
+        "volume": { "values": ["s3v"],     "isExcludes": false, "isRecursive": false },
+        "bucket": { "values": ["sbi-raw"], "isExcludes": false, "isRecursive": false },
+        "key":    { "values": ["*"],       "isExcludes": false, "isRecursive": true  }
       },
       "policyItems": [
         {
@@ -191,13 +191,13 @@
       "name": "sbi-ozone-curated-policy",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "Spark ETL: sbi-curated Ozone 버킷 읽기/쓰기",
+      "description": "Spark ETL: s3v/sbi-curated 버킷 읽기/쓰기 (s3a://sbi-curated/)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["firstvolume"],  "isExcludes": false, "isRecursive": false },
-        "bucket": { "values": ["sbi-curated"], "isExcludes": false, "isRecursive": false },
-        "key":    { "values": ["*"],           "isExcludes": false, "isRecursive": true  }
+        "volume": { "values": ["s3v"],          "isExcludes": false, "isRecursive": false },
+        "bucket": { "values": ["sbi-curated"],  "isExcludes": false, "isRecursive": false },
+        "key":    { "values": ["*"],            "isExcludes": false, "isRecursive": true  }
       },
       "policyItems": [
         {

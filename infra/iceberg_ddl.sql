@@ -104,13 +104,12 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_alerts (
     event_timestamp TIMESTAMP COMMENT '거래 발생 시각',
     amount          DOUBLE    COMMENT '거래 금액 (INR)',
     channel         STRING    COMMENT 'ONLINE | ATM | POS',
-    fraud_reason    STRING    COMMENT 'HIGH_AMOUNT | VELOCITY | GEO_ANOMALY',
     fraud_score     DOUBLE    COMMENT '사기 점수 (0.0 ~ 1.0)',
     location_lat    DOUBLE    COMMENT '거래 위도',
     location_lon    DOUBLE    COMMENT '거래 경도',
     alerted_at      TIMESTAMP COMMENT '알림 생성 시각'
 )
-PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', fraud_reason STRING)
+PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', fraud_reason STRING COMMENT 'HIGH_AMOUNT | VELOCITY | GEO_ANOMALY')
 STORED BY ICEBERG
 LOCATION 's3a://sbi-curated/fraud_alerts'
 TBLPROPERTIES (
@@ -124,7 +123,6 @@ TBLPROPERTIES (
 -- Fraud Summary 테이블 (시간대/채널별 집계)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sbi_curated.fraud_summary (
-    dt              STRING    COMMENT '날짜 (YYYY-MM-DD)',
     hour            INT       COMMENT '시각 (0~23)',
     channel         STRING    COMMENT 'ONLINE | ATM | POS',
     total_txn       BIGINT    COMMENT '총 거래 건수',
@@ -133,7 +131,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_summary (
     fraud_rate      DOUBLE    COMMENT '사기 비율 (%)',
     summarized_at   TIMESTAMP COMMENT '집계 시각'
 )
-PARTITIONED BY (dt STRING)
+PARTITIONED BY (dt STRING COMMENT '날짜 (YYYY-MM-DD)')
 STORED BY ICEBERG
 LOCATION 's3a://sbi-curated/fraud_summary'
 TBLPROPERTIES (
