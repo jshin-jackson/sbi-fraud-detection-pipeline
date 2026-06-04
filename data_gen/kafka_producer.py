@@ -43,19 +43,13 @@ KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "changeit")
 
 def build_kafka_config() -> dict:
     """Kerberos SASL_SSL Kafka 설정을 반환합니다."""
-    jaas_conf = (
-        f"com.sun.security.auth.module.Krb5LoginModule required "
-        f"useKeyTab=true "
-        f"storeKey=true "
-        f"keyTab=\"{KAFKA_KEYTAB}\" "
-        f"principal=\"{KAFKA_PRINCIPAL}\";"
-    )
-    return {
+    config = {
         "bootstrap.servers": KAFKA_BROKERS,
         "security.protocol": "SASL_SSL",
         "sasl.mechanism": "GSSAPI",
         "sasl.kerberos.service.name": "kafka",
-        "sasl.jaas.config": jaas_conf,
+        "sasl.kerberos.keytab": KAFKA_KEYTAB,
+        "sasl.kerberos.principal": KAFKA_PRINCIPAL,
         "ssl.ca.location": _export_truststore_pem(),
         "client.id": "sbi-fraud-producer",
         "acks": "all",
@@ -64,6 +58,11 @@ def build_kafka_config() -> dict:
         "batch.size": 65536,
         "compression.type": "snappy",
     }
+    # ssl.ca.location이 비어 있으면(PEM 변환 실패) SSL 인증서 검증 비활성화
+    if not config["ssl.ca.location"]:
+        config.pop("ssl.ca.location")
+        config["enable.ssl.certificate.verification"] = False
+    return config
 
 
 def _export_truststore_pem() -> str:
