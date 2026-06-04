@@ -5,7 +5,7 @@ Spark Structured Streaming 잡 — Kafka 원시 이벤트 → sbi_raw.transactio
     spark-submit \
       --master yarn \
       --deploy-mode cluster \
-      --principal sbi-spark@SBI.LOCAL \
+      --principal systest@ROOT.COMOPS.SITE \
       --keytab /root/systest.keytab \
       --properties-file /path/to/conf/spark_iceberg.conf \
       spark/stream/raw_ingest_job.py
@@ -37,11 +37,11 @@ logger = logging.getLogger("SBI-RawIngest")
 # ---------------------------------------------------------------------------
 # 환경 설정
 # ---------------------------------------------------------------------------
-KAFKA_BROKERS    = os.environ.get("KAFKA_BROKERS",    "kafka-broker1.sbi.local:9093")
+KAFKA_BROKERS    = os.environ.get("KAFKA_BROKERS",    "ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093")
 KAFKA_TOPIC      = os.environ.get("KAFKA_TOPIC",      "sbi.transactions.raw")
-KAFKA_GROUP_ID   = os.environ.get("KAFKA_GROUP_ID",   "sbi-spark-stream-group")
+KAFKA_GROUP_ID   = os.environ.get("KAFKA_GROUP_ID",   "systest-stream-group")
 KAFKA_KEYTAB     = os.environ.get("KAFKA_KEYTAB",     "/root/systest.keytab")
-KAFKA_PRINCIPAL  = os.environ.get("KAFKA_PRINCIPAL",  "sbi-spark@SBI.LOCAL")
+KAFKA_PRINCIPAL  = os.environ.get("KAFKA_PRINCIPAL",  "systest@ROOT.COMOPS.SITE")
 KAFKA_TRUSTSTORE = os.environ.get("KAFKA_TRUSTSTORE", "/etc/security/certs/truststore.jks")
 KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "changeit")
 

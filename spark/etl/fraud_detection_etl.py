@@ -13,7 +13,7 @@ Spark ETL 잡 — sbi_raw.transactions → 사기 탐지 룰 적용 → sbi_cura
     spark-submit \
       --master yarn \
       --deploy-mode cluster \
-      --principal sbi-spark@SBI.LOCAL \
+      --principal systest@ROOT.COMOPS.SITE \
       --keytab /root/systest.keytab \
       --properties-file /path/to/conf/spark_iceberg.conf \
       --py-files spark/etl/rules.py \
@@ -50,7 +50,7 @@ logger = logging.getLogger("SBI-FraudETL")
 # 환경 설정
 # ---------------------------------------------------------------------------
 KEYTAB    = os.environ.get("SPARK_KEYTAB",    "/root/systest.keytab")
-PRINCIPAL = os.environ.get("SPARK_PRINCIPAL", "sbi-spark@SBI.LOCAL")
+PRINCIPAL = os.environ.get("SPARK_PRINCIPAL", "systest@ROOT.COMOPS.SITE")
 
 RAW_TABLE        = "sbi_raw.transactions"
 CURATED_TRANS    = "sbi_curated.transactions"

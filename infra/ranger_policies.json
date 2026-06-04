@@ -20,7 +20,7 @@
       },
       "policyItems": [
         {
-          "users": ["sbi-kafka"],
+          "users": ["systest"],
           "groups": [],
           "accesses": [
             { "type": "publish", "isAllowed": true },
@@ -44,14 +44,14 @@
           "isRecursive": false
         },
         "consumergroup": {
-          "values": ["sbi-spark-stream-group"],
+          "values": ["systest-stream-group"],
           "isExcludes": false,
           "isRecursive": false
         }
       },
       "policyItems": [
         {
-          "users": ["sbi-spark"],
+          "users": ["systest"],
           "groups": [],
           "accesses": [
             { "type": "consume", "isAllowed": true },
@@ -75,7 +75,7 @@
       },
       "policyItems": [
         {
-          "users": ["sbi-spark"],
+          "users": ["systest"],
           "groups": [],
           "accesses": [
             { "type": "read",   "isAllowed": true },
@@ -101,7 +101,7 @@
       },
       "policyItems": [
         {
-          "users": ["sbi-spark"],
+          "users": ["systest"],
           "groups": [],
           "accesses": [
             { "type": "read",   "isAllowed": true },
@@ -127,8 +127,8 @@
       },
       "policyItems": [
         {
-          "users": ["sbi-spark", "sbi-analyst"],
-          "groups": ["sbi-data-team"],
+          "users": ["systest"],
+          "groups": [],
           "accesses": [
             { "type": "select", "isAllowed": true }
           ],
@@ -150,21 +150,13 @@
       },
       "policyItems": [
         {
-          "users": ["sbi-spark"],
+          "users": ["systest"],
           "groups": [],
           "accesses": [
             { "type": "select", "isAllowed": true },
             { "type": "update", "isAllowed": true },
             { "type": "create", "isAllowed": true },
             { "type": "drop",   "isAllowed": false }
-          ],
-          "conditions": []
-        },
-        {
-          "users": ["sbi-analyst"],
-          "groups": ["sbi-data-team"],
-          "accesses": [
-            { "type": "select", "isAllowed": true }
           ],
           "conditions": []
         }

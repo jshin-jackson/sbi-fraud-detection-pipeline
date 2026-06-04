@@ -14,8 +14,8 @@ set -euo pipefail
 # 환경 설정
 # ---------------------------------------------------------------------------
 KAFKA_HOME="${KAFKA_HOME:-/opt/cloudera/parcels/CDH/lib/kafka}"
-ZOOKEEPER="${ZOOKEEPER:-zookeeper1.sbi.local:2181/kafka}"
-BOOTSTRAP="${BOOTSTRAP:-kafka-broker1.sbi.local:9093}"
+ZOOKEEPER="${ZOOKEEPER:-ccycloud-1.jshin.root.comops.site:2181/kafka}"
+BOOTSTRAP="${BOOTSTRAP:-ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093}"
 COMMAND_CONFIG="${COMMAND_CONFIG:-/etc/kafka/conf/kafka-client-kerberos.properties}"
 
 TOPIC_RAW="sbi.transactions.raw"
@@ -87,15 +87,15 @@ cat <<'ACL_EXAMPLE'
 # Producer ACL
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $COMMAND_CONFIG \
-  --add --allow-principal User:sbi-kafka \
+  --add --allow-principal User:systest \
   --operation Write --topic sbi.transactions.raw
 
 # Consumer ACL
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $COMMAND_CONFIG \
-  --add --allow-principal User:sbi-spark \
+  --add --allow-principal User:systest \
   --operation Read --topic sbi.transactions.raw \
-  --group sbi-spark-stream-group
+  --group systest-stream-group
 ACL_EXAMPLE
 
 # ---------------------------------------------------------------------------

@@ -75,39 +75,35 @@ ls /opt/cloudera/parcels/CDH/jars/ | grep -E "iceberg|spark-sql-kafka|kafka-clie
 ### 1. Kerberos Principal 및 Keytab 발급
 
 ```bash
-kadmin.local -q "addprinc -randkey sbi-kafka@SBI.LOCAL"
-kadmin.local -q "addprinc -randkey sbi-spark@SBI.LOCAL"
-kadmin.local -q "addprinc -randkey sbi-analyst@SBI.LOCAL"
+kadmin.local -q "addprinc -randkey systest@ROOT.COMOPS.SITE"
 
-kadmin.local -q "ktadd -k /root/keytabs/sbi-kafka.keytab sbi-kafka@SBI.LOCAL"
-kadmin.local -q "ktadd -k /root/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL"
-kadmin.local -q "ktadd -k /root/keytabs/sbi-analyst.keytab sbi-analyst@SBI.LOCAL"
+kadmin.local -q "ktadd -k /root/systest.keytab systest@ROOT.COMOPS.SITE"
 ```
 
 ### 2. Ozone 버킷 생성
 
 ```bash
-kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
 bash infra/ozone_setup.sh
 ```
 
 ### 3. Kafka 토픽 생성
 
 ```bash
-kinit -kt /root/systest.keytab sbi-kafka@SBI.LOCAL
+kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
 bash infra/kafka_setup.sh
 ```
 
 ### 4. Apache Ranger 정책 등록
 
-Ranger UI (`https://ranger.sbi.local`) 또는 REST API로 `infra/ranger_policies.json` 임포트:
+Ranger UI (`https://ccycloud-1.jshin.root.comops.site:6182`) 또는 REST API로 `infra/ranger_policies.json` 임포트:
 
 ```bash
 curl -X POST \
   -u admin:RANGER_ADMIN_PW \
   -H "Content-Type: multipart/form-data" \
   -F "file=@infra/ranger_policies.json" \
-  "https://ranger.sbi.local/service/plugins/policies/importPoliciesFromFile?isOverride=false"
+  "https://ccycloud-1.jshin.root.comops.site:6182/service/plugins/policies/importPoliciesFromFile?isOverride=false"
 ```
 
 ### 5. Iceberg 테이블 생성
@@ -116,7 +112,7 @@ Beeline(Hive) 또는 Hue SQL Editor에서 `infra/iceberg_ddl.sql` 내용을 실�
 
 ```bash
 # Beeline 실행 예시
-beeline -u "jdbc:hive2://hiveserver2.sbi.local:10000/;principal=hive/_HOST@SBI.LOCAL;ssl=true" \
+beeline -u "jdbc:hive2://hiveserver2.jshin.root.comops.site:10000/;principal=hive/_HOST@ROOT.COMOPS.SITE;ssl=true" \
         -f infra/iceberg_ddl.sql
 ```
 
@@ -146,10 +142,10 @@ python kafka_producer.py --rows 5000 --rate 50
 환경변수 설정 (실제 클러스터 값으로 수정):
 
 ```bash
-export KAFKA_BROKERS=kafka-broker1.sbi.local:9093
+export KAFKA_BROKERS=ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093
 export KAFKA_TOPIC=sbi.transactions.raw
 export KAFKA_KEYTAB=/root/systest.keytab
-export KAFKA_PRINCIPAL=sbi-kafka@SBI.LOCAL
+export KAFKA_PRINCIPAL=systest@ROOT.COMOPS.SITE
 export KAFKA_TRUSTSTORE=/etc/security/certs/truststore.jks
 export KAFKA_TRUSTSTORE_PW=changeit
 ```
@@ -159,12 +155,12 @@ export KAFKA_TRUSTSTORE_PW=changeit
 에어갭 환경이므로 `--packages` 대신 `conf/spark_iceberg.conf`의 `spark.jars`로 로컬 JAR을 참조합니다.
 
 ```bash
-kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
 
 spark-submit \
   --master yarn \
   --deploy-mode cluster \
-  --principal sbi-spark@SBI.LOCAL \
+  --principal systest@ROOT.COMOPS.SITE \
   --keytab /root/systest.keytab \
   --properties-file conf/spark_iceberg.conf \
   spark/stream/raw_ingest_job.py
@@ -179,7 +175,7 @@ spark-submit \
 spark-submit \
   --master yarn \
   --deploy-mode cluster \
-  --principal sbi-spark@SBI.LOCAL \
+  --principal systest@ROOT.COMOPS.SITE \
   --keytab /root/systest.keytab \
   --properties-file conf/spark_iceberg.conf \
   --py-files spark/etl/rules.py \
@@ -189,7 +185,7 @@ spark-submit \
 spark-submit \
   --master yarn \
   --deploy-mode cluster \
-  --principal sbi-spark@SBI.LOCAL \
+  --principal systest@ROOT.COMOPS.SITE \
   --keytab /root/systest.keytab \
   --properties-file conf/spark_iceberg.conf \
   --py-files spark/etl/rules.py \
@@ -288,7 +284,7 @@ sbi-realtime-fraud-detection/
 ### Kerberos 티켓 만료
 
 ```bash
-kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
 klist
 ```
 
@@ -309,7 +305,7 @@ find /opt/cloudera/parcels/CDH/jars/ -name "kafka-clients*.jar"
 Auto-TLS + Kerberos 환경에서 Ozone S3 게이트웨이 접근 키 발급:
 
 ```bash
-kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
 ozone s3 getsecret
 # 출력된 accessKey / secret 을 conf/spark_iceberg.conf 에 설정
 ```
@@ -327,7 +323,7 @@ ozone s3 getsecret
 ozone s3 getsecret
 
 # S3G 포트 접근 확인
-curl -k https://ozone-s3g.sbi.local:9878/
+curl -k https://ccycloud-1.jshin.root.comops.site:9879/
 ```
 
 ### Iceberg 스냅샷 정리 (유지 관리)

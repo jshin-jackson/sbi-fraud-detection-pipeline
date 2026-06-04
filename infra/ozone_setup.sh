@@ -28,7 +28,7 @@ info "Ozone 볼륨 확인: /${VOLUME}"
 if "${OZONE_CMD}" sh volume info "/${VOLUME}" &>/dev/null; then
     info "볼륨 이미 존재: /${VOLUME}"
 else
-    "${OZONE_CMD}" sh volume create "/${VOLUME}" --user sbi-spark
+    "${OZONE_CMD}" sh volume create "/${VOLUME}" --user systest
     ok "볼륨 생성 완료: /${VOLUME}"
 fi
 
