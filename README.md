@@ -143,7 +143,7 @@ python kafka_producer.py --rows 5000 --rate 50
 
 ```bash
 export KAFKA_BROKERS=ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093
-export KAFKA_TOPIC=sbi.transactions.raw
+export KAFKA_TOPIC=sbi_transactions_raw
 export KAFKA_KEYTAB=/root/systest.keytab
 export KAFKA_PRINCIPAL=systest@ROOT.COMOPS.SITE
 export KAFKA_TRUSTSTORE=/etc/security/certs/truststore.jks

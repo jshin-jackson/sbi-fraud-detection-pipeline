@@ -23,8 +23,8 @@ PRINCIPAL="${PRINCIPAL:-systest@ROOT.COMOPS.SITE}"
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
 TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3}"
 
-TOPIC_RAW="sbi.transactions.raw"
-TOPIC_DLQ="sbi.transactions.dlq"   # Dead Letter Queue
+TOPIC_RAW="sbi_transactions_raw"
+TOPIC_DLQ="sbi_transactions_dlq"   # Dead Letter Queue
 
 PARTITIONS=6
 REPLICATION=3
@@ -148,40 +148,25 @@ KAFKA_CONFIGS="${KAFKA_HOME}/bin/kafka-configs.sh"
 KAFKA_ACL="${KAFKA_HOME}/bin/kafka-acls.sh"
 
 # ---------------------------------------------------------------------------
-# 토픽 존재 여부 확인 함수 (--describe 방식 — 정확한 판별)
-# ---------------------------------------------------------------------------
-topic_exists() {
-    local topic="$1"
-    "${KAFKA_TOPICS}" \
-        --bootstrap-server "${BOOTSTRAP}" \
-        --command-config "${CLIENT_PROPS}" \
-        --describe \
-        --topic "${topic}" \
-        2>&1 | grep -q "Topic: ${topic}"
-}
-
-# ---------------------------------------------------------------------------
-# 토픽 생성 함수
+# 토픽 생성 함수 (--if-not-exists: 이미 존재해도 오류 없이 통과)
 # ---------------------------------------------------------------------------
 create_topic() {
     local topic="$1"
     local partitions="${2:-$PARTITIONS}"
 
-    if topic_exists "${topic}"; then
-        info "토픽 이미 존재: ${topic}"
-    else
-        "${KAFKA_TOPICS}" \
-            --bootstrap-server "${BOOTSTRAP}" \
-            --command-config "${CLIENT_PROPS}" \
-            --create \
-            --topic "${topic}" \
-            --partitions "${partitions}" \
-            --replication-factor "${REPLICATION}" \
-            --config "retention.ms=${RETENTION_MS}" \
-            --config cleanup.policy=delete \
-            --config compression.type=snappy
-        ok "토픽 생성 완료: ${topic}"
-    fi
+    "${KAFKA_TOPICS}" \
+        --bootstrap-server "${BOOTSTRAP}" \
+        --command-config "${CLIENT_PROPS}" \
+        --create \
+        --if-not-exists \
+        --topic "${topic}" \
+        --partitions "${partitions}" \
+        --replication-factor "${REPLICATION}" \
+        --config "retention.ms=${RETENTION_MS}" \
+        --config cleanup.policy=delete \
+        --config compression.type=snappy \
+    && ok "토픽 생성 완료 (또는 이미 존재): ${topic}" \
+    || err "토픽 생성 실패: ${topic}"
 }
 
 # ---------------------------------------------------------------------------
@@ -201,26 +186,23 @@ cat <<'ACL_EXAMPLE'
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $CLIENT_PROPS \
   --add --allow-principal User:systest \
-  --operation Write --topic sbi.transactions.raw
+  --operation Write --topic sbi_transactions_raw
 
 # Consumer ACL
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $CLIENT_PROPS \
   --add --allow-principal User:systest \
-  --operation Read --topic sbi.transactions.raw \
+  --operation Read --topic sbi_transactions_raw \
   --group systest-stream-group
 ACL_EXAMPLE
 
 # ---------------------------------------------------------------------------
 # 토픽 최종 확인
 # ---------------------------------------------------------------------------
-info "토픽 최종 확인:"
-for t in "${TOPIC_RAW}" "${TOPIC_DLQ}"; do
-    if topic_exists "${t}"; then
-        ok "확인됨: ${t}"
-    else
-        warn "토픽을 찾을 수 없습니다: ${t} (Kafka 반영 지연일 수 있음)"
-    fi
-done
+info "전체 토픽 목록:"
+"${KAFKA_TOPICS}" \
+    --bootstrap-server "${BOOTSTRAP}" \
+    --command-config "${CLIENT_PROPS}" \
+    --list 2>/dev/null | grep "^sbi_" || warn "sbi_ 접두사 토픽을 찾을 수 없습니다."
 
 ok "Kafka 토픽 설정 완료"
