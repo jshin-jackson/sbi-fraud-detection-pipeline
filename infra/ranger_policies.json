@@ -85,6 +85,30 @@
     },
 
     {
+      "name": "sbi-ozone-volume-policy",
+      "description": "systest: firstvolume 볼륨 레벨 READ/LIST 권한",
+      "service": "cm_ozone",
+      "serviceType": "ozone",
+      "isEnabled": true,
+      "resources": {
+        "volume": { "values": ["firstvolume"], "isExcludes": false, "isRecursive": false }
+      },
+      "policyItems": [
+        {
+          "users": ["systest"],
+          "groups": [],
+          "accesses": [
+            { "type": "read",   "isAllowed": true },
+            { "type": "list",   "isAllowed": true },
+            { "type": "create", "isAllowed": true },
+            { "type": "write",  "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
       "name": "sbi-ozone-raw-policy",
       "description": "Spark Stream: sbi-raw Ozone 버킷 읽기/쓰기",
       "service": "cm_ozone",
