@@ -25,8 +25,14 @@ info "Kerberos 티켓 확인..."
 klist -s || err "Kerberos 티켓이 없습니다. 먼저 kinit 을 실행하세요."
 ok "Kerberos 티켓 유효"
 
-# 볼륨은 Ozone 관리자가 사전 생성한 볼륨을 사용합니다 (일반 유저는 볼륨 생성 불가).
-# volume info 는 권한 부재로 실패할 수 있으므로 결과에 무관하게 버킷 생성을 진행합니다.
+# ---------------------------------------------------------------------------
+# [사전 요구사항] Ozone admin 계정으로 아래 명령을 먼저 실행해야 합니다:
+#   ozone sh volume addacl /firstvolume --acl "user:systest:rwlc"
+#
+# Ranger로 Ozone ACL을 관리하는 경우 CM에서 확인:
+#   Ozone → Configuration → ozone.acl.authorizer.class
+#   = org.apache.ranger.authorization.ozone.authorizer.RangerOzoneAuthorizer
+# ---------------------------------------------------------------------------
 info "Ozone 볼륨 사용: /${VOLUME} (사전 생성된 볼륨)"
 
 # ---------------------------------------------------------------------------
