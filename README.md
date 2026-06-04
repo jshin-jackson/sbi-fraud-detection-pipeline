@@ -79,9 +79,9 @@ kadmin.local -q "addprinc -randkey sbi-kafka@SBI.LOCAL"
 kadmin.local -q "addprinc -randkey sbi-spark@SBI.LOCAL"
 kadmin.local -q "addprinc -randkey sbi-analyst@SBI.LOCAL"
 
-kadmin.local -q "ktadd -k /etc/security/keytabs/sbi-kafka.keytab sbi-kafka@SBI.LOCAL"
-kadmin.local -q "ktadd -k /etc/security/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL"
-kadmin.local -q "ktadd -k /etc/security/keytabs/sbi-analyst.keytab sbi-analyst@SBI.LOCAL"
+kadmin.local -q "ktadd -k /root/keytabs/sbi-kafka.keytab sbi-kafka@SBI.LOCAL"
+kadmin.local -q "ktadd -k /root/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL"
+kadmin.local -q "ktadd -k /root/keytabs/sbi-analyst.keytab sbi-analyst@SBI.LOCAL"
 ```
 
 ### 2. Ozone 버킷 생성
