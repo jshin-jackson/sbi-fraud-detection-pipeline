@@ -177,8 +177,7 @@
           "accesses": [
             { "type": "select", "isAllowed": true },
             { "type": "update", "isAllowed": true },
-            { "type": "create", "isAllowed": true },
-            { "type": "drop",   "isAllowed": false }
+            { "type": "create", "isAllowed": true }
           ],
           "conditions": []
         }
