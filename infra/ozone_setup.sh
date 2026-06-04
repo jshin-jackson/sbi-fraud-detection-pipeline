@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Ozone 버킷 생성 스크립트
-# S3 Gateway 기본 볼륨 's3v' 에 버킷을 생성합니다.
-# s3a://sbi-raw/  →  /s3v/sbi-raw
-# s3a://sbi-curated/  →  /s3v/sbi-curated
+# OFS(RootedOzoneFileSystem) 용 볼륨 'firstvolume' 에 버킷을 생성합니다.
+# ofs://.../firstvolume/sbi-raw
+# ofs://.../firstvolume/sbi-curated
 #
 # 전제조건 (Ozone admin 선실행):
-#   sudo -u hdfs ozone sh bucket create --layout FILE_SYSTEM_OPTIMIZED /s3v/sbi-raw
-#   sudo -u hdfs ozone sh bucket create --layout FILE_SYSTEM_OPTIMIZED /s3v/sbi-curated
-# 또는 systest 에게 s3v 볼륨 쓰기 권한 부여:
-#   sudo -u hdfs ozone sh volume addacl /s3v --acl "user:systest:rwlc"
+#   sudo -u hdfs ozone sh bucket create --layout FILE_SYSTEM_OPTIMIZED /firstvolume/sbi-raw
+#   sudo -u hdfs ozone sh bucket create --layout FILE_SYSTEM_OPTIMIZED /firstvolume/sbi-curated
+# 또는 systest 에게 firstvolume 볼륨 쓰기 권한 부여:
+#   sudo -u hdfs ozone sh volume addacl /firstvolume --acl "user:systest:rwlc"
 #
 # 사용법:
 #   chmod +x ozone_setup.sh
@@ -19,9 +19,8 @@
 set -euo pipefail
 
 OZONE_CMD="${OZONE_CMD:-ozone}"
-# s3v: Ozone S3 Gateway 기본 볼륨 (ozone.s3g.volume.name)
-# s3a://sbi-raw/ → /s3v/sbi-raw 매핑
-VOLUME="s3v"
+# firstvolume: OFS(RootedOzoneFileSystem) 용 볼륨
+VOLUME="firstvolume"
 BUCKET_RAW="sbi-raw"
 BUCKET_CURATED="sbi-curated"
 
@@ -46,7 +45,7 @@ ok "Kerberos 티켓 유효"
 #
 # Ranger Ozone 정책으로 관리하는 경우 'sbi-ozone-s3v-policy' import 후 방법 B 생략 가능
 # ---------------------------------------------------------------------------
-info "Ozone S3G 볼륨 사용: /${VOLUME} (S3A s3a://sbi-raw/ → /${VOLUME}/sbi-raw)"
+info "Ozone OFS 볼륨 사용: /${VOLUME} (ofs://<om-host>:9862/${VOLUME}/sbi-raw)"
 
 # ---------------------------------------------------------------------------
 # 버킷 생성
@@ -72,6 +71,6 @@ info "버킷 정보:"
 
 ok "Ozone 버킷 설정 완료"
 echo ""
-echo "S3A 경로:"
-echo "  Raw     : s3a://${BUCKET_RAW}/"
-echo "  Curated : s3a://${BUCKET_CURATED}/"
+echo "OFS 경로:"
+echo "  Raw     : ofs://ccycloud-1.jshin.root.comops.site:9862/${VOLUME}/${BUCKET_RAW}/"
+echo "  Curated : ofs://ccycloud-1.jshin.root.comops.site:9862/${VOLUME}/${BUCKET_CURATED}/"

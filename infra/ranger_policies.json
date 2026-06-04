@@ -153,11 +153,11 @@
       "name": "sbi-ozone-raw-policy",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "Spark Stream: s3v/sbi-raw 버킷 읽기/쓰기 (s3a://sbi-raw/)",
+      "description": "Spark Stream: firstvolume/sbi-raw 버킷 읽기/쓰기 (ofs://.../firstvolume/sbi-raw/)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["s3v"],     "isExcludes": false, "isRecursive": false },
+        "volume": { "values": ["firstvolume"], "isExcludes": false, "isRecursive": false },
         "bucket": { "values": ["sbi-raw"], "isExcludes": false, "isRecursive": false },
         "key":    { "values": ["*"],       "isExcludes": false, "isRecursive": true  }
       },
@@ -191,11 +191,11 @@
       "name": "sbi-ozone-curated-policy",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "Spark ETL: s3v/sbi-curated 버킷 읽기/쓰기 (s3a://sbi-curated/)",
+      "description": "Spark ETL: firstvolume/sbi-curated 버킷 읽기/쓰기 (ofs://.../firstvolume/sbi-curated/)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["s3v"],          "isExcludes": false, "isRecursive": false },
+        "volume": { "values": ["firstvolume"],  "isExcludes": false, "isRecursive": false },
         "bucket": { "values": ["sbi-curated"],  "isExcludes": false, "isRecursive": false },
         "key":    { "values": ["*"],            "isExcludes": false, "isRecursive": true  }
       },
@@ -229,12 +229,12 @@
       "name": "sbi-hive-url-policy",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "systest: s3a://sbi-raw, s3a://sbi-curated URL 접근 권한 (CREATE DATABASE/TABLE LOCATION 용)",
+      "description": "systest: ofs://.../firstvolume/sbi-raw, ofs://.../firstvolume/sbi-curated URL 접근 권한 (CREATE TABLE LOCATION 용)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "url": {
-          "values": ["s3a://sbi-raw/*", "s3a://sbi-curated/*"],
+          "values": ["ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-raw/*", "ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/*"],
           "isExcludes": false,
           "isRecursive": true
         }

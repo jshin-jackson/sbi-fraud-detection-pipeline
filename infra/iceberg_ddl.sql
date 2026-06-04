@@ -1,6 +1,6 @@
 -- =============================================================================
 -- SBI 사기 탐지 데모 — Iceberg 테이블 DDL
--- 스토리지: Apache Ozone (s3a://)
+-- 스토리지: Apache Ozone (ofs://)
 -- 카탈로그: Hive Metastore (HMS)
 -- =============================================================================
 -- 실행 방법:
@@ -23,7 +23,7 @@
 CREATE DATABASE IF NOT EXISTS sbi_raw
   COMMENT 'SBI 사기 탐지 — Kafka 원시 이벤트 저장소';
 -- 참고: 데이터베이스 기본 위치는 Hive warehouse를 사용합니다.
---       테이블 데이터는 각 CREATE TABLE의 LOCATION(s3a://)에 저장됩니다.
+--       테이블 데이터는 각 CREATE TABLE의 LOCATION(ofs://)에 저장됩니다.
 
 
 -- ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS sbi_raw.transactions (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD 파티션')
 STORED BY ICEBERG
-LOCATION 's3a://sbi-raw/transactions'
+LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-raw/transactions'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -63,7 +63,7 @@ TBLPROPERTIES (
 
 CREATE DATABASE IF NOT EXISTS sbi_curated
   COMMENT 'SBI 사기 탐지 — 정제 및 집계 결과 저장소';
--- 참고: 테이블 데이터는 각 CREATE TABLE의 LOCATION(s3a://)에 저장됩니다.
+-- 참고: 테이블 데이터는 각 CREATE TABLE의 LOCATION(ofs://)에 저장됩니다.
 
 
 -- ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.transactions (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', channel STRING COMMENT 'ONLINE|ATM|POS')
 STORED BY ICEBERG
-LOCATION 's3a://sbi-curated/transactions'
+LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/transactions'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_alerts (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', fraud_reason STRING COMMENT 'HIGH_AMOUNT | VELOCITY | GEO_ANOMALY')
 STORED BY ICEBERG
-LOCATION 's3a://sbi-curated/fraud_alerts'
+LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/fraud_alerts'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_summary (
 )
 PARTITIONED BY (dt STRING COMMENT '날짜 (YYYY-MM-DD)')
 STORED BY ICEBERG
-LOCATION 's3a://sbi-curated/fraud_summary'
+LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/fraud_summary'
 TBLPROPERTIES (
     'format-version'  = '2',
     'write.format.default' = 'parquet'
