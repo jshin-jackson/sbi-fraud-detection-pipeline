@@ -20,6 +20,9 @@ BOOTSTRAP="${BOOTSTRAP:-ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.
 KEYTAB="${KEYTAB:-/root/systest.keytab}"
 PRINCIPAL="${PRINCIPAL:-systest@ROOT.COMOPS.SITE}"
 
+TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
+TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3}"
+
 TOPIC_RAW="sbi.transactions.raw"
 TOPIC_DLQ="sbi.transactions.dlq"   # Dead Letter Queue
 
@@ -45,36 +48,63 @@ ok "Kerberos 티켓 유효"
 # ---------------------------------------------------------------------------
 # CDP Auto-TLS truststore 자동 감지
 # ---------------------------------------------------------------------------
-CDP_TRUSTSTORE=""
-CDP_TRUSTSTORE_PASS=""
-
-# CDP Auto-TLS 표준 경로 순서대로 탐색
-for ts_path in \
-    "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks" \
-    "/opt/cloudera/security/pki/truststore.jks" \
-    "/etc/hadoop/conf/ssl/truststore.jks"; do
-    if [[ -f "${ts_path}" ]]; then
-        CDP_TRUSTSTORE="${ts_path}"
-        break
-    fi
-done
+CDP_TRUSTSTORE="${TRUSTSTORE_PATH:-}"
+CDP_TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-}"
 
 if [[ -z "${CDP_TRUSTSTORE}" ]]; then
-    err "Auto-TLS truststore를 찾을 수 없습니다. TRUSTSTORE_PATH 환경변수로 지정하세요."
+    for ts_path in \
+        "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks" \
+        "/opt/cloudera/security/pki/truststore.jks" \
+        "/etc/hadoop/conf/ssl/truststore.jks"; do
+        if [[ -f "${ts_path}" ]]; then
+            CDP_TRUSTSTORE="${ts_path}"
+            break
+        fi
+    done
+fi
+
+if [[ -z "${CDP_TRUSTSTORE}" ]]; then
+    err "Auto-TLS truststore를 찾을 수 없습니다.
+  TRUSTSTORE_PATH 환경변수로 직접 지정하세요:
+  export TRUSTSTORE_PATH=/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks"
 fi
 ok "Truststore 발견: ${CDP_TRUSTSTORE}"
 
-# truststore 비밀번호 파일 탐색 (CDP Auto-TLS는 .pw 파일로 관리)
-PW_FILE="${CDP_TRUSTSTORE%.jks}.pw"
-if [[ -f "${PW_FILE}" ]]; then
-    CDP_TRUSTSTORE_PASS="$(cat "${PW_FILE}")"
-    ok "Truststore 비밀번호 파일: ${PW_FILE}"
-else
-    # fallback: 환경변수 또는 빈 문자열
-    CDP_TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-}"
-    if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
-        warn "Truststore 비밀번호를 찾지 못했습니다. TRUSTSTORE_PASS 환경변수로 지정하거나 빈 값으로 시도합니다."
+# ---------------------------------------------------------------------------
+# Truststore 비밀번호 — 우선순위:
+#   1) TRUSTSTORE_PASS 환경변수
+#   2) <truststore>.pw 파일
+#   3) Kafka 프로세스 설정 파일 (CM이 관리하는 process dir)
+# ---------------------------------------------------------------------------
+if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
+    PW_FILE="${CDP_TRUSTSTORE%.jks}.pw"
+    if [[ -f "${PW_FILE}" ]]; then
+        CDP_TRUSTSTORE_PASS="$(cat "${PW_FILE}")"
+        ok "Truststore 비밀번호 파일 사용: ${PW_FILE}"
     fi
+fi
+
+if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
+    # CM process dir에서 Kafka가 사용하는 truststore 비밀번호 탐색
+    KAFKA_PROC_PW=$(grep -r "ssl.truststore.password" \
+        /var/run/cloudera-scm-agent/process/*/kafka*/kafka.properties \
+        2>/dev/null | head -1 | awk -F'=' '{print $2}' | tr -d ' ')
+    if [[ -n "${KAFKA_PROC_PW}" ]]; then
+        CDP_TRUSTSTORE_PASS="${KAFKA_PROC_PW}"
+        ok "Kafka 프로세스 설정에서 truststore 비밀번호 취득"
+    fi
+fi
+
+if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
+    err "Truststore 비밀번호를 확인할 수 없습니다.
+  아래 명령으로 직접 확인 후 환경변수로 지정하세요:
+
+    cat /var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.pw
+    grep ssl.truststore.password /var/run/cloudera-scm-agent/process/*/kafka*/kafka.properties
+
+  확인한 비밀번호를 환경변수로 설정:
+    export TRUSTSTORE_PASS=<비밀번호>
+    bash infra/kafka_setup.sh"
 fi
 
 # ---------------------------------------------------------------------------
