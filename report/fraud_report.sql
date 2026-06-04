@@ -9,7 +9,7 @@
 --   3. 아래 쿼리를 각각 붙여넣고 실행
 --
 -- Beeline 실행 방법:
---   beeline -u "jdbc:hive2://hiveserver2.jshin.root.comops.site:10000/;principal=hive/_HOST@ROOT.COMOPS.SITE;ssl=true" \
+--   beeline -u "jdbc:hive2://ccycloud-1.jshin.root.comops.site:10000/;principal=hive/_HOST@ROOT.COMOPS.SITE;ssl=true" \
 --           -f fraud_report.sql
 -- =============================================================================
 
