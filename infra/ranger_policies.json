@@ -34,19 +34,14 @@
     },
 
     {
-      "name": "sbi-kafka-consumer-policy",
-      "description": "Spark Structured Streaming Consumer: sbi-transactions-raw 토픽 읽기 권한",
+      "name": "sbi-kafka-consumer-topic-policy",
+      "description": "Spark Streaming Consumer: sbi-transactions-raw 토픽 consume/describe 권한",
       "service": "cm_kafka",
       "serviceType": "kafka",
       "isEnabled": true,
       "resources": {
         "topic": {
           "values": ["sbi-transactions-raw"],
-          "isExcludes": false,
-          "isRecursive": false
-        },
-        "consumergroup": {
-          "values": ["systest-stream-group"],
           "isExcludes": false,
           "isRecursive": false
         }
@@ -58,6 +53,31 @@
           "accesses": [
             { "type": "consume",  "isAllowed": true },
             { "type": "describe", "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-kafka-consumer-group-policy",
+      "description": "Spark Streaming Consumer Group: systest-stream-group consume 권한",
+      "service": "cm_kafka",
+      "serviceType": "kafka",
+      "isEnabled": true,
+      "resources": {
+        "consumergroup": {
+          "values": ["systest-stream-group"],
+          "isExcludes": false,
+          "isRecursive": false
+        }
+      },
+      "policyItems": [
+        {
+          "users": ["systest"],
+          "groups": [],
+          "accesses": [
+            { "type": "consume", "isAllowed": true }
           ],
           "conditions": []
         }
