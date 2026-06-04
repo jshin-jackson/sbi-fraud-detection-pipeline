@@ -226,6 +226,41 @@
 
     {
       "service": "cm_hive",
+      "name": "sbi-hive-url-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "systest: s3a://sbi-raw, s3a://sbi-curated URL 접근 권한 (CREATE DATABASE/TABLE LOCATION 용)",
+      "isAuditEnabled": true,
+      "isEnabled": true,
+      "resources": {
+        "url": {
+          "values": ["s3a://sbi-raw/*", "s3a://sbi-curated/*"],
+          "isExcludes": false,
+          "isRecursive": true
+        }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "read",  "isAllowed": true },
+            { "type": "write", "isAllowed": true },
+            { "type": "all",   "isAllowed": true }
+          ],
+          "users": ["systest"],
+          "groups": [],
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
+        }
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "hive"
+    },
+
+    {
+      "service": "cm_hive",
       "name": "sbi-hive-raw-policy",
       "policyType": 0,
       "policyPriority": 0,
