@@ -1,0 +1,32 @@
+# =============================================================================
+# Kerberos krb5.conf 예시 (실제 환경의 /etc/krb5.conf 참고용)
+# SBI.LOCAL 렐름 설정 — KDC 주소를 실제 환경에 맞게 수정하세요.
+# =============================================================================
+
+[libdefaults]
+    default_realm = SBI.LOCAL
+    dns_lookup_realm = false
+    dns_lookup_kdc = false
+    ticket_lifetime = 24h
+    renew_lifetime = 7d
+    forwardable = true
+    rdns = false
+    # Cloudera Auto-TLS 환경에서 필요
+    udp_preference_limit = 1
+
+[realms]
+    SBI.LOCAL = {
+        kdc = kdc1.sbi.local:88
+        kdc = kdc2.sbi.local:88
+        admin_server = kdc1.sbi.local:749
+        default_domain = sbi.local
+    }
+
+[domain_realm]
+    .sbi.local = SBI.LOCAL
+    sbi.local = SBI.LOCAL
+
+[logging]
+    default = FILE:/var/log/krb5libs.log
+    kdc = FILE:/var/log/krb5kdc.log
+    admin_server = FILE:/var/log/kadmind.log

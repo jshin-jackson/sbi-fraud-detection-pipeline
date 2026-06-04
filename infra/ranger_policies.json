@@ -1,0 +1,175 @@
+{
+  "_comment": "SBI 사기 탐지 데모 — Apache Ranger 정책 템플릿",
+  "_note": "Ranger REST API로 임포트하거나 Ranger UI > Export/Import 기능을 활용하세요.",
+  "_api": "POST /service/plugins/policies/importPoliciesFromFile",
+
+  "policies": [
+
+    {
+      "name": "sbi-kafka-producer-policy",
+      "description": "SDV Kafka Producer: sbi.transactions.raw 토픽 쓰기 권한",
+      "service": "sbi_kafka",
+      "serviceType": "kafka",
+      "isEnabled": true,
+      "resources": {
+        "topic": {
+          "values": ["sbi.transactions.raw", "sbi.transactions.dlq"],
+          "isExcludes": false,
+          "isRecursive": false
+        }
+      },
+      "policyItems": [
+        {
+          "users": ["sbi-kafka"],
+          "groups": [],
+          "accesses": [
+            { "type": "publish", "isAllowed": true },
+            { "type": "describe", "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-kafka-consumer-policy",
+      "description": "Spark Structured Streaming Consumer: sbi.transactions.raw 토픽 읽기 권한",
+      "service": "sbi_kafka",
+      "serviceType": "kafka",
+      "isEnabled": true,
+      "resources": {
+        "topic": {
+          "values": ["sbi.transactions.raw"],
+          "isExcludes": false,
+          "isRecursive": false
+        },
+        "consumergroup": {
+          "values": ["sbi-spark-stream-group"],
+          "isExcludes": false,
+          "isRecursive": false
+        }
+      },
+      "policyItems": [
+        {
+          "users": ["sbi-spark"],
+          "groups": [],
+          "accesses": [
+            { "type": "consume", "isAllowed": true },
+            { "type": "describe", "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-ozone-raw-policy",
+      "description": "Spark Stream: sbi-raw Ozone 버킷 읽기/쓰기",
+      "service": "sbi_ozone",
+      "serviceType": "ozone",
+      "isEnabled": true,
+      "resources": {
+        "volume": { "values": ["vol1"], "isExcludes": false, "isRecursive": false },
+        "bucket": { "values": ["sbi-raw"], "isExcludes": false, "isRecursive": false },
+        "key":    { "values": ["*"],      "isExcludes": false, "isRecursive": true  }
+      },
+      "policyItems": [
+        {
+          "users": ["sbi-spark"],
+          "groups": [],
+          "accesses": [
+            { "type": "read",   "isAllowed": true },
+            { "type": "write",  "isAllowed": true },
+            { "type": "create", "isAllowed": true },
+            { "type": "list",   "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-ozone-curated-policy",
+      "description": "Spark ETL: sbi-curated Ozone 버킷 읽기/쓰기",
+      "service": "sbi_ozone",
+      "serviceType": "ozone",
+      "isEnabled": true,
+      "resources": {
+        "volume": { "values": ["vol1"],        "isExcludes": false, "isRecursive": false },
+        "bucket": { "values": ["sbi-curated"], "isExcludes": false, "isRecursive": false },
+        "key":    { "values": ["*"],           "isExcludes": false, "isRecursive": true  }
+      },
+      "policyItems": [
+        {
+          "users": ["sbi-spark"],
+          "groups": [],
+          "accesses": [
+            { "type": "read",   "isAllowed": true },
+            { "type": "write",  "isAllowed": true },
+            { "type": "create", "isAllowed": true },
+            { "type": "list",   "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-hive-raw-read-policy",
+      "description": "Impala/Hive: sbi_raw 데이터베이스 읽기 권한",
+      "service": "sbi_hive",
+      "serviceType": "hive",
+      "isEnabled": true,
+      "resources": {
+        "database": { "values": ["sbi_raw"],  "isExcludes": false, "isRecursive": false },
+        "table":    { "values": ["*"],         "isExcludes": false, "isRecursive": false },
+        "column":   { "values": ["*"],         "isExcludes": false, "isRecursive": false }
+      },
+      "policyItems": [
+        {
+          "users": ["sbi-spark", "sbi-analyst"],
+          "groups": ["sbi-data-team"],
+          "accesses": [
+            { "type": "select", "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-hive-curated-readwrite-policy",
+      "description": "Spark ETL + Analyst: sbi_curated 데이터베이스 읽기/쓰기",
+      "service": "sbi_hive",
+      "serviceType": "hive",
+      "isEnabled": true,
+      "resources": {
+        "database": { "values": ["sbi_curated"], "isExcludes": false, "isRecursive": false },
+        "table":    { "values": ["*"],            "isExcludes": false, "isRecursive": false },
+        "column":   { "values": ["*"],            "isExcludes": false, "isRecursive": false }
+      },
+      "policyItems": [
+        {
+          "users": ["sbi-spark"],
+          "groups": [],
+          "accesses": [
+            { "type": "select", "isAllowed": true },
+            { "type": "update", "isAllowed": true },
+            { "type": "create", "isAllowed": true },
+            { "type": "drop",   "isAllowed": false }
+          ],
+          "conditions": []
+        },
+        {
+          "users": ["sbi-analyst"],
+          "groups": ["sbi-data-team"],
+          "accesses": [
+            { "type": "select", "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    }
+
+  ]
+}
