@@ -24,9 +24,13 @@ info "Kerberos 티켓 확인..."
 klist -s || err "Kerberos 티켓이 없습니다. 먼저 kinit 을 실행하세요."
 ok "Kerberos 티켓 유효"
 
-info "볼륨 확인: /${VOLUME}"
-"${OZONE_CMD}" sh volume info "/${VOLUME}" || err "볼륨 /${VOLUME} 이 존재하지 않습니다."
-ok "볼륨 확인 완료: /${VOLUME}"
+info "Ozone 볼륨 확인: /${VOLUME}"
+if "${OZONE_CMD}" sh volume info "/${VOLUME}" &>/dev/null; then
+    info "볼륨 이미 존재: /${VOLUME}"
+else
+    "${OZONE_CMD}" sh volume create "/${VOLUME}" --user sbi-spark
+    ok "볼륨 생성 완료: /${VOLUME}"
+fi
 
 # ---------------------------------------------------------------------------
 # 버킷 생성
