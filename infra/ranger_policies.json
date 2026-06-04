@@ -8,10 +8,12 @@
   "policies": [
 
     {
-      "name": "sbi-kafka-producer-policy",
-      "description": "SDV Kafka Producer: sbi-transactions-raw 토픽 쓰기 권한",
       "service": "cm_kafka",
-      "serviceType": "kafka",
+      "name": "sbi-kafka-producer-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "SDV Kafka Producer: sbi-transactions-raw 토픽 쓰기 권한",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "topic": {
@@ -22,22 +24,30 @@
       },
       "policyItems": [
         {
-          "users": ["systest"],
-          "groups": [],
           "accesses": [
             { "type": "publish",  "isAllowed": true },
             { "type": "describe", "isAllowed": true }
           ],
-          "conditions": []
+          "users": ["systest"],
+          "groups": [],
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "kafka"
     },
 
     {
-      "name": "sbi-kafka-consumer-topic-policy",
-      "description": "Spark Streaming Consumer: sbi-transactions-raw 토픽 consume/describe 권한",
       "service": "cm_kafka",
-      "serviceType": "kafka",
+      "name": "sbi-kafka-consumer-topic-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "Spark Streaming Consumer: sbi-transactions-raw 토픽 consume/describe 권한",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "topic": {
@@ -48,22 +58,30 @@
       },
       "policyItems": [
         {
-          "users": ["systest"],
-          "groups": [],
           "accesses": [
             { "type": "consume",  "isAllowed": true },
             { "type": "describe", "isAllowed": true }
           ],
-          "conditions": []
+          "users": ["systest"],
+          "groups": [],
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "kafka"
     },
 
     {
-      "name": "sbi-kafka-consumer-group-policy",
-      "description": "Spark Streaming Consumer Group: systest-stream-group consume 권한",
       "service": "cm_kafka",
-      "serviceType": "kafka",
+      "name": "sbi-kafka-consumer-group-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "Spark Streaming Consumer Group: systest-stream-group consume 권한",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "consumergroup": {
@@ -74,45 +92,69 @@
       },
       "policyItems": [
         {
-          "users": ["systest"],
-          "groups": [],
           "accesses": [
             { "type": "consume", "isAllowed": true }
           ],
-          "conditions": []
+          "users": ["systest"],
+          "groups": [],
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "kafka"
     },
 
     {
-      "name": "sbi-ozone-volume-policy",
-      "description": "systest: firstvolume 볼륨 레벨 READ/LIST 권한",
       "service": "cm_ozone",
-      "serviceType": "ozone",
+      "name": "sbi-ozone-volume-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "systest: firstvolume 볼륨 레벨 권한",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["firstvolume"], "isExcludes": false, "isRecursive": false }
+        "volume": {
+          "values": ["firstvolume"],
+          "isExcludes": false,
+          "isRecursive": false
+        }
       },
       "policyItems": [
         {
+          "accesses": [
+            { "type": "read",      "isAllowed": true },
+            { "type": "write",     "isAllowed": true },
+            { "type": "create",    "isAllowed": true },
+            { "type": "list",      "isAllowed": true },
+            { "type": "delete",    "isAllowed": true },
+            { "type": "read_acl",  "isAllowed": true },
+            { "type": "write_acl", "isAllowed": true },
+            { "type": "all",       "isAllowed": true }
+          ],
           "users": ["systest"],
           "groups": [],
-          "accesses": [
-            { "type": "read",   "isAllowed": true },
-            { "type": "list",   "isAllowed": true },
-            { "type": "create", "isAllowed": true },
-            { "type": "write",  "isAllowed": true }
-          ],
-          "conditions": []
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "ozone"
     },
 
     {
-      "name": "sbi-ozone-raw-policy",
-      "description": "Spark Stream: sbi-raw Ozone 버킷 읽기/쓰기",
       "service": "cm_ozone",
-      "serviceType": "ozone",
+      "name": "sbi-ozone-raw-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "Spark Stream: sbi-raw Ozone 버킷 읽기/쓰기",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "volume": { "values": ["firstvolume"], "isExcludes": false, "isRecursive": false },
@@ -121,24 +163,36 @@
       },
       "policyItems": [
         {
+          "accesses": [
+            { "type": "read",      "isAllowed": true },
+            { "type": "write",     "isAllowed": true },
+            { "type": "create",    "isAllowed": true },
+            { "type": "list",      "isAllowed": true },
+            { "type": "delete",    "isAllowed": true },
+            { "type": "read_acl",  "isAllowed": true },
+            { "type": "write_acl", "isAllowed": true },
+            { "type": "all",       "isAllowed": true }
+          ],
           "users": ["systest"],
           "groups": [],
-          "accesses": [
-            { "type": "read",   "isAllowed": true },
-            { "type": "write",  "isAllowed": true },
-            { "type": "create", "isAllowed": true },
-            { "type": "list",   "isAllowed": true }
-          ],
-          "conditions": []
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "ozone"
     },
 
     {
-      "name": "sbi-ozone-curated-policy",
-      "description": "Spark ETL: sbi-curated Ozone 버킷 읽기/쓰기",
       "service": "cm_ozone",
-      "serviceType": "ozone",
+      "name": "sbi-ozone-curated-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "Spark ETL: sbi-curated Ozone 버킷 읽기/쓰기",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "volume": { "values": ["firstvolume"],  "isExcludes": false, "isRecursive": false },
@@ -147,24 +201,36 @@
       },
       "policyItems": [
         {
+          "accesses": [
+            { "type": "read",      "isAllowed": true },
+            { "type": "write",     "isAllowed": true },
+            { "type": "create",    "isAllowed": true },
+            { "type": "list",      "isAllowed": true },
+            { "type": "delete",    "isAllowed": true },
+            { "type": "read_acl",  "isAllowed": true },
+            { "type": "write_acl", "isAllowed": true },
+            { "type": "all",       "isAllowed": true }
+          ],
           "users": ["systest"],
           "groups": [],
-          "accesses": [
-            { "type": "read",   "isAllowed": true },
-            { "type": "write",  "isAllowed": true },
-            { "type": "create", "isAllowed": true },
-            { "type": "list",   "isAllowed": true }
-          ],
-          "conditions": []
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "ozone"
     },
 
     {
-      "name": "sbi-hive-ddl-admin-policy",
-      "description": "systest: CREATE DATABASE 권한 (DDL 실행용 와일드카드 정책)",
       "service": "cm_hive",
-      "serviceType": "hive",
+      "name": "sbi-hive-ddl-admin-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "systest: CREATE DATABASE 권한 (DDL 실행용)",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "database": { "values": ["*"], "isExcludes": false, "isRecursive": false },
@@ -173,21 +239,29 @@
       },
       "policyItems": [
         {
-          "users": ["systest"],
-          "groups": [],
           "accesses": [
             { "type": "all", "isAllowed": true }
           ],
-          "conditions": []
+          "users": ["systest"],
+          "groups": [],
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "hive"
     },
 
     {
-      "name": "sbi-hive-raw-policy",
-      "description": "Hive: sbi_raw 데이터베이스 전체 권한",
       "service": "cm_hive",
-      "serviceType": "hive",
+      "name": "sbi-hive-raw-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "Hive: sbi_raw 데이터베이스 전체 권한",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "database": { "values": ["sbi_raw"], "isExcludes": false, "isRecursive": false },
@@ -196,28 +270,29 @@
       },
       "policyItems": [
         {
+          "accesses": [
+            { "type": "all", "isAllowed": true }
+          ],
           "users": ["systest"],
           "groups": [],
-          "accesses": [
-            { "type": "select", "isAllowed": true },
-            { "type": "update", "isAllowed": true },
-            { "type": "create", "isAllowed": true },
-            { "type": "alter",  "isAllowed": true },
-            { "type": "drop",   "isAllowed": true },
-            { "type": "index",  "isAllowed": true },
-            { "type": "lock",   "isAllowed": true },
-            { "type": "all",    "isAllowed": true }
-          ],
-          "conditions": []
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "hive"
     },
 
     {
-      "name": "sbi-hive-curated-policy",
-      "description": "Hive: sbi_curated 데이터베이스 전체 권한",
       "service": "cm_hive",
-      "serviceType": "hive",
+      "name": "sbi-hive-curated-policy",
+      "policyType": 0,
+      "policyPriority": 0,
+      "description": "Hive: sbi_curated 데이터베이스 전체 권한",
+      "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "database": { "values": ["sbi_curated"], "isExcludes": false, "isRecursive": false },
@@ -226,21 +301,20 @@
       },
       "policyItems": [
         {
+          "accesses": [
+            { "type": "all", "isAllowed": true }
+          ],
           "users": ["systest"],
           "groups": [],
-          "accesses": [
-            { "type": "select", "isAllowed": true },
-            { "type": "update", "isAllowed": true },
-            { "type": "create", "isAllowed": true },
-            { "type": "alter",  "isAllowed": true },
-            { "type": "drop",   "isAllowed": true },
-            { "type": "index",  "isAllowed": true },
-            { "type": "lock",   "isAllowed": true },
-            { "type": "all",    "isAllowed": true }
-          ],
-          "conditions": []
+          "roles": [],
+          "conditions": [],
+          "delegateAdmin": false
         }
-      ]
+      ],
+      "denyPolicyItems": [],
+      "allowExceptions": [],
+      "denyExceptions": [],
+      "serviceType": "hive"
     }
 
   ]
