@@ -137,8 +137,31 @@
     },
 
     {
-      "name": "sbi-hive-raw-read-policy",
-      "description": "Impala/Hive: sbi_raw 데이터베이스 읽기 권한",
+      "name": "sbi-hive-ddl-admin-policy",
+      "description": "systest: CREATE DATABASE 권한 (DDL 실행용 와일드카드 정책)",
+      "service": "cm_hive",
+      "serviceType": "hive",
+      "isEnabled": true,
+      "resources": {
+        "database": { "values": ["*"], "isExcludes": false, "isRecursive": false },
+        "table":    { "values": ["*"], "isExcludes": false, "isRecursive": false },
+        "column":   { "values": ["*"], "isExcludes": false, "isRecursive": false }
+      },
+      "policyItems": [
+        {
+          "users": ["systest"],
+          "groups": [],
+          "accesses": [
+            { "type": "all", "isAllowed": true }
+          ],
+          "conditions": []
+        }
+      ]
+    },
+
+    {
+      "name": "sbi-hive-raw-policy",
+      "description": "Hive: sbi_raw 데이터베이스 전체 권한",
       "service": "cm_hive",
       "serviceType": "hive",
       "isEnabled": true,
@@ -152,7 +175,14 @@
           "users": ["systest"],
           "groups": [],
           "accesses": [
-            { "type": "select", "isAllowed": true }
+            { "type": "select", "isAllowed": true },
+            { "type": "update", "isAllowed": true },
+            { "type": "create", "isAllowed": true },
+            { "type": "alter",  "isAllowed": true },
+            { "type": "drop",   "isAllowed": true },
+            { "type": "index",  "isAllowed": true },
+            { "type": "lock",   "isAllowed": true },
+            { "type": "all",    "isAllowed": true }
           ],
           "conditions": []
         }
@@ -160,8 +190,8 @@
     },
 
     {
-      "name": "sbi-hive-curated-readwrite-policy",
-      "description": "Spark ETL + Analyst: sbi_curated 데이터베이스 읽기/쓰기",
+      "name": "sbi-hive-curated-policy",
+      "description": "Hive: sbi_curated 데이터베이스 전체 권한",
       "service": "cm_hive",
       "serviceType": "hive",
       "isEnabled": true,
@@ -177,7 +207,12 @@
           "accesses": [
             { "type": "select", "isAllowed": true },
             { "type": "update", "isAllowed": true },
-            { "type": "create", "isAllowed": true }
+            { "type": "create", "isAllowed": true },
+            { "type": "alter",  "isAllowed": true },
+            { "type": "drop",   "isAllowed": true },
+            { "type": "index",  "isAllowed": true },
+            { "type": "lock",   "isAllowed": true },
+            { "type": "all",    "isAllowed": true }
           ],
           "conditions": []
         }
