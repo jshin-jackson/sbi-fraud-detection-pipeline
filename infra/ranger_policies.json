@@ -226,37 +226,6 @@
 
     {
       "service": "cm_hive",
-      "name": "sbi-hive-ddl-admin-policy",
-      "policyType": 0,
-      "policyPriority": 0,
-      "description": "systest: CREATE DATABASE 권한 (DDL 실행용)",
-      "isAuditEnabled": true,
-      "isEnabled": true,
-      "resources": {
-        "database": { "values": ["*"], "isExcludes": false, "isRecursive": false },
-        "table":    { "values": ["*"], "isExcludes": false, "isRecursive": false },
-        "column":   { "values": ["*"], "isExcludes": false, "isRecursive": false }
-      },
-      "policyItems": [
-        {
-          "accesses": [
-            { "type": "all", "isAllowed": true }
-          ],
-          "users": ["systest"],
-          "groups": [],
-          "roles": [],
-          "conditions": [],
-          "delegateAdmin": false
-        }
-      ],
-      "denyPolicyItems": [],
-      "allowExceptions": [],
-      "denyExceptions": [],
-      "serviceType": "hive"
-    },
-
-    {
-      "service": "cm_hive",
       "name": "sbi-hive-raw-policy",
       "policyType": 0,
       "policyPriority": 0,
