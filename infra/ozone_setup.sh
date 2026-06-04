@@ -18,19 +18,16 @@ BUCKET_CURATED="sbi-curated"
 
 info() { echo "[INFO]  $*"; }
 ok()   { echo "[OK]    $*"; }
+warn() { echo "[WARN]  $*"; }
 err()  { echo "[ERROR] $*" >&2; exit 1; }
 
 info "Kerberos 티켓 확인..."
 klist -s || err "Kerberos 티켓이 없습니다. 먼저 kinit 을 실행하세요."
 ok "Kerberos 티켓 유효"
 
-info "Ozone 볼륨 확인: /${VOLUME}"
-if "${OZONE_CMD}" sh volume info "/${VOLUME}" &>/dev/null; then
-    info "볼륨 이미 존재: /${VOLUME}"
-else
-    "${OZONE_CMD}" sh volume create "/${VOLUME}" --user systest
-    ok "볼륨 생성 완료: /${VOLUME}"
-fi
+# 볼륨은 Ozone 관리자가 사전 생성한 볼륨을 사용합니다 (일반 유저는 볼륨 생성 불가).
+# volume info 는 권한 부재로 실패할 수 있으므로 결과에 무관하게 버킷 생성을 진행합니다.
+info "Ozone 볼륨 사용: /${VOLUME} (사전 생성된 볼륨)"
 
 # ---------------------------------------------------------------------------
 # 버킷 생성
@@ -51,8 +48,8 @@ done
 # 버킷 정보 확인
 # ---------------------------------------------------------------------------
 info "버킷 정보:"
-"${OZONE_CMD}" sh bucket info "/${VOLUME}/${BUCKET_RAW}"
-"${OZONE_CMD}" sh bucket info "/${VOLUME}/${BUCKET_CURATED}"
+"${OZONE_CMD}" sh bucket info "/${VOLUME}/${BUCKET_RAW}"  2>/dev/null || warn "버킷 정보 조회 실패 (권한 문제일 수 있음): ${BUCKET_RAW}"
+"${OZONE_CMD}" sh bucket info "/${VOLUME}/${BUCKET_CURATED}" 2>/dev/null || warn "버킷 정보 조회 실패 (권한 문제일 수 있음): ${BUCKET_CURATED}"
 
 ok "Ozone 버킷 설정 완료"
 echo ""
