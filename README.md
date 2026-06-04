@@ -14,13 +14,15 @@ SDV → Kafka → Spark Stream → Ozone(Iceberg Raw) → Spark ETL → Ozone(Ic
 | 구성 요소 | 버전 / 제품 |
 |---|---|
 | Cloudera CDP | 7.3.1 온프레미스 (에어갭) |
+| OS | RHEL 9.6 |
+| JDK | OpenJDK 11 |
 | Apache Kafka | Cloudera SMM 내장 Kafka |
 | Apache Spark | 3.3.x (YARN 실행) |
 | Apache Iceberg | 1.4.x (CDP 파슬 내장) |
-| Apache Ozone | CDP 7.3.1 내장 |
+| Apache Ozone | CDP 7.3.1 내장 (S3G HTTPS 포트 9879) |
 | 보안 | Kerberos + Auto-TLS + Apache Ranger |
-| 데이터 생성 | Python SDV (Synthetic Data Vault) 1.9+ |
-| 리포트 | Hue SQL Editor |
+| 데이터 생성 | Python 3.9.21 + SDV 1.9.0 |
+| 리포트 | Hue SQL Editor (HiveServer2) |
 
 ---
 
@@ -32,12 +34,27 @@ SDV → Kafka → Spark Stream → Ozone(Iceberg Raw) → Spark ETL → Ozone(Ic
 
 #### Python 패키지 (wheel)
 
+**RHEL 9.6에는 Python 3.9가 기본 포함되어 있습니다. SCL 불필요.**
+
+Python 3 버전 확인:
+
 ```bash
-# [Bastion 머신에서]
+python3 --version   # 3.9.21 확인
+```
+
+wheel 다운로드 및 설치:
+
+```bash
+# [Bastion 머신에서 — Python 3.8+ 환경]
+python3 -m venv /tmp/sbi-venv
+source /tmp/sbi-venv/bin/activate
+pip install --upgrade pip
 pip download -r data_gen/requirements.txt -d ./wheels/
 tar czf sbi-wheels.tar.gz wheels/
 
 # [클러스터 노드로 복사 후]
+python3 -m venv /tmp/sbi-venv
+source /tmp/sbi-venv/bin/activate
 tar xzf sbi-wheels.tar.gz
 pip install --no-index --find-links=./wheels/ -r data_gen/requirements.txt
 ```
@@ -112,7 +129,10 @@ beeline -u "jdbc:hive2://hiveserver2.sbi.local:10000/;principal=hive/_HOST@SBI.L
 ```bash
 cd data_gen
 
-# Python 패키지 설치 (사전 준비된 wheel 사용)
+# Python 3 가상환경 활성화 (사전 준비)
+source /tmp/sbi-venv/bin/activate
+
+# Python 패키지 설치 (사전 준비된 wheel 사용, Python 3.8+ 필수)
 pip install --no-index --find-links=/path/to/wheels/ -r requirements.txt
 
 # CSV 파일 생성 후 Kafka 전송 (100건/초)
@@ -279,9 +299,26 @@ CDP 파슬 JAR 실제 경로 확인:
 ```bash
 find /opt/cloudera/parcels/CDH/jars/ -name "iceberg-spark-runtime*.jar"
 find /opt/cloudera/parcels/CDH/jars/ -name "spark-sql-kafka*.jar"
+find /opt/cloudera/parcels/CDH/jars/ -name "kafka-clients*.jar"
 ```
 
 확인된 경로로 `conf/spark_iceberg.conf`의 `spark.jars` 값을 수정합니다.
+
+### Ozone S3A 인증 키 발급
+
+Auto-TLS + Kerberos 환경에서 Ozone S3 게이트웨이 접근 키 발급:
+
+```bash
+kinit -kt /etc/security/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL
+ozone s3 getsecret
+# 출력된 accessKey / secret 을 conf/spark_iceberg.conf 에 설정
+```
+
+### Java 11 모듈 오류
+
+`InaccessibleObjectException` 발생 시 `conf/spark_iceberg.conf`의
+`spark.driver.extraJavaOptions` / `spark.executor.extraJavaOptions` 설정이
+적용되었는지 확인합니다.
 
 ### Ozone S3A 연결 오류
 

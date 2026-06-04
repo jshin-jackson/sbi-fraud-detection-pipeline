@@ -8,16 +8,11 @@ Spark Structured Streaming 잡 — Kafka 원시 이벤트 → sbi_raw.transactio
       --principal sbi-spark@SBI.LOCAL \
       --keytab /etc/security/keytabs/sbi-spark.keytab \
       --files /etc/security/keytabs/sbi-spark.keytab,/path/to/kafka_kerberos.properties \
-      --packages org.apache.iceberg:iceberg-spark-runtime-3.3_2.12:1.4.3,\
-org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.2 \
-      --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
-      --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
-      --conf spark.sql.catalog.spark_catalog.type=hive \
-      --conf spark.sql.catalog.spark_catalog.uri=thrift://hiveserver2.sbi.local:9083 \
-      --conf spark.hadoop.fs.s3a.endpoint=http://ozone-s3g.sbi.local:9878 \
-      --conf spark.hadoop.fs.s3a.path.style.access=true \
-      --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
-      raw_ingest_job.py
+      --properties-file /path/to/conf/spark_iceberg.conf \
+      spark/stream/raw_ingest_job.py
+
+# Air-gapped 환경: --packages 사용 불가. conf/spark_iceberg.conf 의 spark.jars 로 로컬 JAR 지정.
+# 검증 환경: Python 3.9.21 / OpenJDK 11 / RHEL 9.6 / Cloudera CDP 7.3.1
 """
 
 import os

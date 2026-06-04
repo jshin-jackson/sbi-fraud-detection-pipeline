@@ -15,13 +15,12 @@ Spark ETL 잡 — sbi_raw.transactions → 사기 탐지 룰 적용 → sbi_cura
       --deploy-mode cluster \
       --principal sbi-spark@SBI.LOCAL \
       --keytab /etc/security/keytabs/sbi-spark.keytab \
-      --packages org.apache.iceberg:iceberg-spark-runtime-3.3_2.12:1.4.3 \
-      --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
-      --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
-      --conf spark.sql.catalog.spark_catalog.type=hive \
-      --conf spark.hadoop.fs.s3a.endpoint=http://ozone-s3g.sbi.local:9878 \
-      --conf spark.hadoop.fs.s3a.path.style.access=true \
-      fraud_detection_etl.py --dt 2024-06-15
+      --properties-file /path/to/conf/spark_iceberg.conf \
+      --py-files spark/etl/rules.py \
+      spark/etl/fraud_detection_etl.py --dt 2024-06-15
+
+# Air-gapped 환경: --packages 사용 불가. conf/spark_iceberg.conf 의 spark.jars 로 로컬 JAR 지정.
+# 검증 환경: Python 3.9.21 / OpenJDK 11 / RHEL 9.6 / Cloudera CDP 7.3.1
 """
 
 import argparse
