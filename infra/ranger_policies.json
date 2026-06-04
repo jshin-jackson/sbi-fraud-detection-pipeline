@@ -69,7 +69,7 @@
       "serviceType": "ozone",
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["vol1"], "isExcludes": false, "isRecursive": false },
+        "volume": { "values": ["firstvolume"], "isExcludes": false, "isRecursive": false },
         "bucket": { "values": ["sbi-raw"], "isExcludes": false, "isRecursive": false },
         "key":    { "values": ["*"],      "isExcludes": false, "isRecursive": true  }
       },
@@ -95,7 +95,7 @@
       "serviceType": "ozone",
       "isEnabled": true,
       "resources": {
-        "volume": { "values": ["vol1"],        "isExcludes": false, "isRecursive": false },
+        "volume": { "values": ["firstvolume"],  "isExcludes": false, "isRecursive": false },
         "bucket": { "values": ["sbi-curated"], "isExcludes": false, "isRecursive": false },
         "key":    { "values": ["*"],           "isExcludes": false, "isRecursive": true  }
       },

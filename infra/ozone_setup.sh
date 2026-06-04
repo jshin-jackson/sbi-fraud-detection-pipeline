@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Ozone 볼륨 및 버킷 생성 스크립트
+# Ozone 버킷 생성 스크립트
+# 볼륨 'firstvolume' 은 이미 생성된 볼륨을 사용합니다.
 # 전제조건: Kerberos 티켓 발급 완료 (kinit)
 #
 # 사용법:
@@ -11,7 +12,7 @@
 set -euo pipefail
 
 OZONE_CMD="${OZONE_CMD:-ozone}"
-VOLUME="vol1"
+VOLUME="firstvolume"
 BUCKET_RAW="sbi-raw"
 BUCKET_CURATED="sbi-curated"
 
@@ -23,16 +24,9 @@ info "Kerberos 티켓 확인..."
 klist -s || err "Kerberos 티켓이 없습니다. 먼저 kinit 을 실행하세요."
 ok "Kerberos 티켓 유효"
 
-# ---------------------------------------------------------------------------
-# 볼륨 생성
-# ---------------------------------------------------------------------------
-info "Ozone 볼륨 생성: /${VOLUME}"
-if "${OZONE_CMD}" sh volume info "/${VOLUME}" &>/dev/null; then
-    info "볼륨 이미 존재: /${VOLUME}"
-else
-    "${OZONE_CMD}" sh volume create "/${VOLUME}" --user sbi-spark
-    ok "볼륨 생성 완료: /${VOLUME}"
-fi
+info "볼륨 확인: /${VOLUME}"
+"${OZONE_CMD}" sh volume info "/${VOLUME}" || err "볼륨 /${VOLUME} 이 존재하지 않습니다."
+ok "볼륨 확인 완료: /${VOLUME}"
 
 # ---------------------------------------------------------------------------
 # 버킷 생성

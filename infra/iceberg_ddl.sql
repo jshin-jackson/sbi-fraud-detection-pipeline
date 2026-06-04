@@ -11,8 +11,8 @@
 
 -- ---------------------------------------------------------------------------
 -- 0. Ozone 버킷은 사전에 생성되어 있어야 합니다.
---    ozone sh bucket create /vol1/sbi-raw
---    ozone sh bucket create /vol1/sbi-curated
+--    ozone sh bucket create /firstvolume/sbi-raw
+--    ozone sh bucket create /firstvolume/sbi-curated
 -- ---------------------------------------------------------------------------
 
 
