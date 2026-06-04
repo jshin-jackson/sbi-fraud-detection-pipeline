@@ -10,7 +10,7 @@
     {
       "name": "sbi-kafka-producer-policy",
       "description": "SDV Kafka Producer: sbi-transactions-raw 토픽 쓰기 권한",
-      "service": "sbi_kafka",
+      "service": "cm_kafka",
       "serviceType": "kafka",
       "isEnabled": true,
       "resources": {
@@ -36,7 +36,7 @@
     {
       "name": "sbi-kafka-consumer-policy",
       "description": "Spark Structured Streaming Consumer: sbi-transactions-raw 토픽 읽기 권한",
-      "service": "sbi_kafka",
+      "service": "cm_kafka",
       "serviceType": "kafka",
       "isEnabled": true,
       "resources": {
@@ -67,7 +67,7 @@
     {
       "name": "sbi-ozone-raw-policy",
       "description": "Spark Stream: sbi-raw Ozone 버킷 읽기/쓰기",
-      "service": "sbi_ozone",
+      "service": "cm_ozone",
       "serviceType": "ozone",
       "isEnabled": true,
       "resources": {
@@ -93,7 +93,7 @@
     {
       "name": "sbi-ozone-curated-policy",
       "description": "Spark ETL: sbi-curated Ozone 버킷 읽기/쓰기",
-      "service": "sbi_ozone",
+      "service": "cm_ozone",
       "serviceType": "ozone",
       "isEnabled": true,
       "resources": {
@@ -119,7 +119,7 @@
     {
       "name": "sbi-hive-raw-read-policy",
       "description": "Impala/Hive: sbi_raw 데이터베이스 읽기 권한",
-      "service": "sbi_hive",
+      "service": "cm_hive",
       "serviceType": "hive",
       "isEnabled": true,
       "resources": {
@@ -142,7 +142,7 @@
     {
       "name": "sbi-hive-curated-readwrite-policy",
       "description": "Spark ETL + Analyst: sbi_curated 데이터베이스 읽기/쓰기",
-      "service": "sbi_hive",
+      "service": "cm_hive",
       "serviceType": "hive",
       "isEnabled": true,
       "resources": {
