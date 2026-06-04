@@ -314,7 +314,26 @@ Auto-TLS + Kerberos 환경에서 Ozone S3 게이트웨이 접근 키 발급:
 ```bash
 kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
 ozone s3 getsecret
-# 출력된 accessKey / secret 을 conf/spark_iceberg.conf 에 설정
+# awsAccessKey=systest@ROOT.COMOPS.SITE
+# awsSecret=<생성된 시크릿>
+```
+
+발급한 키는 `conf/spark_iceberg.conf`의 `spark.hadoop.fs.s3a.access.key` / `spark.hadoop.fs.s3a.secret.key`에 설정합니다.
+
+### Hive Metastore S3A 설정 (beeline DDL 실행 전 필수)
+
+`CREATE TABLE ... LOCATION 's3a://...'` 실행 시 Hive Metastore 서버가 Ozone S3A 자격증명이 필요합니다.
+
+**CM → Hive → Configuration → "Hive Metastore Server Advanced Configuration Snippet (Safety Valve) for hive-site.xml"** 에 아래 추가 후 재시작:
+
+```xml
+<property><name>fs.s3a.access.key</name><value>systest@ROOT.COMOPS.SITE</value></property>
+<property><name>fs.s3a.secret.key</name><value>c8fc908aa608408493cede232c9131dac38a6aeeed8acefc28f20016c3675830</value></property>
+<property><name>fs.s3a.endpoint</name><value>https://ccycloud-1.jshin.root.comops.site:9879</value></property>
+<property><name>fs.s3a.path.style.access</name><value>true</value></property>
+<property><name>fs.s3a.connection.ssl.enabled</name><value>true</value></property>
+<property><name>fs.s3a.impl</name><value>org.apache.hadoop.fs.s3a.S3AFileSystem</value></property>
+<property><name>fs.s3a.aws.credentials.provider</name><value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value></property>
 ```
 
 ### Java 11 모듈 오류
