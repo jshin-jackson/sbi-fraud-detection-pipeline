@@ -21,8 +21,9 @@
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS sbi_raw
-  COMMENT 'SBI 사기 탐지 — Kafka 원시 이벤트 저장소'
-  LOCATION 's3a://sbi-raw/databases/sbi_raw.db';
+  COMMENT 'SBI 사기 탐지 — Kafka 원시 이벤트 저장소';
+-- 참고: 데이터베이스 기본 위치는 Hive warehouse를 사용합니다.
+--       테이블 데이터는 각 CREATE TABLE의 LOCATION(s3a://)에 저장됩니다.
 
 
 -- ---------------------------------------------------------------------------
@@ -61,8 +62,8 @@ TBLPROPERTIES (
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS sbi_curated
-  COMMENT 'SBI 사기 탐지 — 정제 및 집계 결과 저장소'
-  LOCATION 's3a://sbi-curated/databases/sbi_curated.db';
+  COMMENT 'SBI 사기 탐지 — 정제 및 집계 결과 저장소';
+-- 참고: 테이블 데이터는 각 CREATE TABLE의 LOCATION(s3a://)에 저장됩니다.
 
 
 -- ---------------------------------------------------------------------------
