@@ -35,7 +35,7 @@ from confluent_kafka import Producer, KafkaException
 
 KAFKA_BROKERS = os.environ.get("KAFKA_BROKERS", "kafka-broker1.sbi.local:9093")
 KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "sbi.transactions.raw")
-KAFKA_KEYTAB = os.environ.get("KAFKA_KEYTAB", "/etc/security/keytabs/sbi-kafka.keytab")
+KAFKA_KEYTAB = os.environ.get("KAFKA_KEYTAB", "/root/systest.keytab")
 KAFKA_PRINCIPAL = os.environ.get("KAFKA_PRINCIPAL", "sbi-kafka@SBI.LOCAL")
 KAFKA_TRUSTSTORE = os.environ.get("KAFKA_TRUSTSTORE", "/etc/security/certs/truststore.jks")
 KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "changeit")

@@ -6,8 +6,7 @@ Spark Structured Streaming 잡 — Kafka 원시 이벤트 → sbi_raw.transactio
       --master yarn \
       --deploy-mode cluster \
       --principal sbi-spark@SBI.LOCAL \
-      --keytab /etc/security/keytabs/sbi-spark.keytab \
-      --files /etc/security/keytabs/sbi-spark.keytab,/path/to/kafka_kerberos.properties \
+      --keytab /root/systest.keytab \
       --properties-file /path/to/conf/spark_iceberg.conf \
       spark/stream/raw_ingest_job.py
 
@@ -41,7 +40,7 @@ logger = logging.getLogger("SBI-RawIngest")
 KAFKA_BROKERS    = os.environ.get("KAFKA_BROKERS",    "kafka-broker1.sbi.local:9093")
 KAFKA_TOPIC      = os.environ.get("KAFKA_TOPIC",      "sbi.transactions.raw")
 KAFKA_GROUP_ID   = os.environ.get("KAFKA_GROUP_ID",   "sbi-spark-stream-group")
-KAFKA_KEYTAB     = os.environ.get("KAFKA_KEYTAB",     "/etc/security/keytabs/sbi-spark.keytab")
+KAFKA_KEYTAB     = os.environ.get("KAFKA_KEYTAB",     "/root/systest.keytab")
 KAFKA_PRINCIPAL  = os.environ.get("KAFKA_PRINCIPAL",  "sbi-spark@SBI.LOCAL")
 KAFKA_TRUSTSTORE = os.environ.get("KAFKA_TRUSTSTORE", "/etc/security/certs/truststore.jks")
 KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "changeit")

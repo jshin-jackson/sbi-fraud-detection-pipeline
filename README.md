@@ -87,14 +87,14 @@ kadmin.local -q "ktadd -k /etc/security/keytabs/sbi-analyst.keytab sbi-analyst@S
 ### 2. Ozone 버킷 생성
 
 ```bash
-kinit -kt /etc/security/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
 bash infra/ozone_setup.sh
 ```
 
 ### 3. Kafka 토픽 생성
 
 ```bash
-kinit -kt /etc/security/keytabs/sbi-kafka.keytab sbi-kafka@SBI.LOCAL
+kinit -kt /root/systest.keytab sbi-kafka@SBI.LOCAL
 bash infra/kafka_setup.sh
 ```
 
@@ -148,7 +148,7 @@ python kafka_producer.py --rows 5000 --rate 50
 ```bash
 export KAFKA_BROKERS=kafka-broker1.sbi.local:9093
 export KAFKA_TOPIC=sbi.transactions.raw
-export KAFKA_KEYTAB=/etc/security/keytabs/sbi-kafka.keytab
+export KAFKA_KEYTAB=/root/systest.keytab
 export KAFKA_PRINCIPAL=sbi-kafka@SBI.LOCAL
 export KAFKA_TRUSTSTORE=/etc/security/certs/truststore.jks
 export KAFKA_TRUSTSTORE_PW=changeit
@@ -159,13 +159,13 @@ export KAFKA_TRUSTSTORE_PW=changeit
 에어갭 환경이므로 `--packages` 대신 `conf/spark_iceberg.conf`의 `spark.jars`로 로컬 JAR을 참조합니다.
 
 ```bash
-kinit -kt /etc/security/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
 
 spark-submit \
   --master yarn \
   --deploy-mode cluster \
   --principal sbi-spark@SBI.LOCAL \
-  --keytab /etc/security/keytabs/sbi-spark.keytab \
+  --keytab /root/systest.keytab \
   --properties-file conf/spark_iceberg.conf \
   spark/stream/raw_ingest_job.py
 ```
@@ -180,7 +180,7 @@ spark-submit \
   --master yarn \
   --deploy-mode cluster \
   --principal sbi-spark@SBI.LOCAL \
-  --keytab /etc/security/keytabs/sbi-spark.keytab \
+  --keytab /root/systest.keytab \
   --properties-file conf/spark_iceberg.conf \
   --py-files spark/etl/rules.py \
   spark/etl/fraud_detection_etl.py --dt 2024-06-15
@@ -190,7 +190,7 @@ spark-submit \
   --master yarn \
   --deploy-mode cluster \
   --principal sbi-spark@SBI.LOCAL \
-  --keytab /etc/security/keytabs/sbi-spark.keytab \
+  --keytab /root/systest.keytab \
   --properties-file conf/spark_iceberg.conf \
   --py-files spark/etl/rules.py \
   spark/etl/fraud_detection_etl.py
@@ -288,7 +288,7 @@ sbi-realtime-fraud-detection/
 ### Kerberos 티켓 만료
 
 ```bash
-kinit -kt /etc/security/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
 klist
 ```
 
@@ -309,7 +309,7 @@ find /opt/cloudera/parcels/CDH/jars/ -name "kafka-clients*.jar"
 Auto-TLS + Kerberos 환경에서 Ozone S3 게이트웨이 접근 키 발급:
 
 ```bash
-kinit -kt /etc/security/keytabs/sbi-spark.keytab sbi-spark@SBI.LOCAL
+kinit -kt /root/systest.keytab sbi-spark@SBI.LOCAL
 ozone s3 getsecret
 # 출력된 accessKey / secret 을 conf/spark_iceberg.conf 에 설정
 ```
