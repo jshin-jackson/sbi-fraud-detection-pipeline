@@ -12,7 +12,7 @@ Spark Structured Streaming 잡 — Kafka 원시 이벤트 → sbi_raw.transactio
       spark/stream/raw_ingest_job.py
 
 # Air-gapped 환경: --packages 사용 불가. conf/spark_iceberg.conf 의 spark.jars 로 로컬 JAR 지정.
-# 검증 환경: Python 3.9.21 / OpenJDK 11 / RHEL 9.6 / Cloudera CDP 7.3.1
+# 검증 환경: Python 3.9.21 / OpenJDK 11 / RHEL 9.6 / Cloudera CDP 7.3.1 (Spark 3.5 / Iceberg 1.5.2)
 """
 
 import os

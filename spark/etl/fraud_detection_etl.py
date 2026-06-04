@@ -20,7 +20,7 @@ Spark ETL 잡 — sbi_raw.transactions → 사기 탐지 룰 적용 → sbi_cura
       spark/etl/fraud_detection_etl.py --dt 2024-06-15
 
 # Air-gapped 환경: --packages 사용 불가. conf/spark_iceberg.conf 의 spark.jars 로 로컬 JAR 지정.
-# 검증 환경: Python 3.9.21 / OpenJDK 11 / RHEL 9.6 / Cloudera CDP 7.3.1
+# 검증 환경: Python 3.9.21 / OpenJDK 11 / RHEL 9.6 / Cloudera CDP 7.3.1 (Spark 3.5 / Iceberg 1.5.2)
 """
 
 import argparse

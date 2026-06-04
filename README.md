@@ -17,8 +17,8 @@ SDV → Kafka → Spark Stream → Ozone(Iceberg Raw) → Spark ETL → Ozone(Ic
 | OS | RHEL 9.6 |
 | JDK | OpenJDK 11 |
 | Apache Kafka | Cloudera SMM 내장 Kafka |
-| Apache Spark | 3.3.x (YARN 실행) |
-| Apache Iceberg | 1.4.x (CDP 파슬 내장) |
+| Apache Spark | 3.5.x / Scala 2.12 (YARN 실행) |
+| Apache Iceberg | 1.5.2 (CDP 파슬 내장, `iceberg-spark-runtime-3.5_2.12`) |
 | Apache Ozone | CDP 7.3.1 내장 (S3G HTTPS 포트 9879) |
 | 보안 | Kerberos + Auto-TLS + Apache Ranger |
 | 데이터 생성 | Python 3.9.21 + SDV 1.9.0 |
