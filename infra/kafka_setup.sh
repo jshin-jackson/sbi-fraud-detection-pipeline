@@ -23,8 +23,8 @@ PRINCIPAL="${PRINCIPAL:-systest@ROOT.COMOPS.SITE}"
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
 TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3}"
 
-TOPIC_RAW="sbi_transactions_raw"
-TOPIC_DLQ="sbi_transactions_dlq"   # Dead Letter Queue
+TOPIC_RAW="sbi-transactions-raw"
+TOPIC_DLQ="sbi-transactions-dlq"   # Dead Letter Queue
 
 PARTITIONS=6
 REPLICATION=3
@@ -186,13 +186,13 @@ cat <<'ACL_EXAMPLE'
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $CLIENT_PROPS \
   --add --allow-principal User:systest \
-  --operation Write --topic sbi_transactions_raw
+  --operation Write --topic sbi-transactions-raw
 
 # Consumer ACL
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $CLIENT_PROPS \
   --add --allow-principal User:systest \
-  --operation Read --topic sbi_transactions_raw \
+  --operation Read --topic sbi-transactions-raw \
   --group systest-stream-group
 ACL_EXAMPLE
 
@@ -203,6 +203,6 @@ info "전체 토픽 목록:"
 "${KAFKA_TOPICS}" \
     --bootstrap-server "${BOOTSTRAP}" \
     --command-config "${CLIENT_PROPS}" \
-    --list 2>/dev/null | grep "^sbi_" || warn "sbi_ 접두사 토픽을 찾을 수 없습니다."
+    --list 2>/dev/null | grep "^sbi-" || warn "sbi- 접두사 토픽을 찾을 수 없습니다."
 
 ok "Kafka 토픽 설정 완료"

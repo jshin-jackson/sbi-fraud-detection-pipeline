@@ -7,13 +7,13 @@
 
     {
       "name": "sbi-kafka-producer-policy",
-      "description": "SDV Kafka Producer: sbi_transactions_raw 토픽 쓰기 권한",
+      "description": "SDV Kafka Producer: sbi-transactions-raw 토픽 쓰기 권한",
       "service": "sbi_kafka",
       "serviceType": "kafka",
       "isEnabled": true,
       "resources": {
         "topic": {
-          "values": ["sbi_transactions_raw", "sbi_transactions_dlq"],
+          "values": ["sbi-transactions-raw", "sbi-transactions-dlq"],
           "isExcludes": false,
           "isRecursive": false
         }
@@ -33,13 +33,13 @@
 
     {
       "name": "sbi-kafka-consumer-policy",
-      "description": "Spark Structured Streaming Consumer: sbi_transactions_raw 토픽 읽기 권한",
+      "description": "Spark Structured Streaming Consumer: sbi-transactions-raw 토픽 읽기 권한",
       "service": "sbi_kafka",
       "serviceType": "kafka",
       "isEnabled": true,
       "resources": {
         "topic": {
-          "values": ["sbi_transactions_raw"],
+          "values": ["sbi-transactions-raw"],
           "isExcludes": false,
           "isRecursive": false
         },

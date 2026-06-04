@@ -38,7 +38,7 @@ logger = logging.getLogger("SBI-RawIngest")
 # 환경 설정
 # ---------------------------------------------------------------------------
 KAFKA_BROKERS    = os.environ.get("KAFKA_BROKERS",    "ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093")
-KAFKA_TOPIC      = os.environ.get("KAFKA_TOPIC",      "sbi_transactions_raw")
+KAFKA_TOPIC      = os.environ.get("KAFKA_TOPIC",      "sbi-transactions-raw")
 KAFKA_GROUP_ID   = os.environ.get("KAFKA_GROUP_ID",   "systest-stream-group")
 KAFKA_KEYTAB     = os.environ.get("KAFKA_KEYTAB",     "/root/systest.keytab")
 KAFKA_PRINCIPAL  = os.environ.get("KAFKA_PRINCIPAL",  "systest@ROOT.COMOPS.SITE")
