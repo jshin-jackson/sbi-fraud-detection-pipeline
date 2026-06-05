@@ -22,6 +22,10 @@ echo "[$(date)] kinit 실행: ${PRINCIPAL}"
 kinit -kt "${KEYTAB}" "${PRINCIPAL}"
 klist
 
+# YARN 실행에 필요한 Hadoop/YARN 설정 디렉터리
+export HADOOP_CONF_DIR=/etc/hadoop/conf
+export YARN_CONF_DIR=/etc/hadoop/conf
+
 # Ozone filesystem JAR을 드라이버 JVM 시작 전에 클래스패스에 추가
 export SPARK_CLASSPATH="/opt/cloudera/parcels/CDH/jars/ozone-filesystem-hadoop3-1.4.0.7.3.1.600-325.jar:/opt/cloudera/parcels/CDH/jars/ozone-filesystem-common-1.4.0.7.3.1.600-325.jar"
 
