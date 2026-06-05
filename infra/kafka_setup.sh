@@ -5,7 +5,7 @@
 #
 # 사용법:
 #   chmod +x kafka_setup.sh
-#   kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
+#   kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
 #   bash infra/kafka_setup.sh
 # =============================================================================
 
@@ -17,7 +17,7 @@ set -euo pipefail
 KAFKA_HOME="${KAFKA_HOME:-/opt/cloudera/parcels/CDH/lib/kafka}"
 BOOTSTRAP="${BOOTSTRAP:-ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093}"
 
-KEYTAB="${KEYTAB:-/root/systest.keytab}"
+KEYTAB="${KEYTAB:-/opt/cloudera/systest.keytab}"
 PRINCIPAL="${PRINCIPAL:-systest@ROOT.COMOPS.SITE}"
 
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"

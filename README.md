@@ -67,7 +67,7 @@ pip install --no-index --find-links=./wheels/ -r data_gen/requirements.txt
 
 ```bash
 kadmin.local -q "addprinc -randkey systest@ROOT.COMOPS.SITE"
-kadmin.local -q "ktadd -k /root/systest.keytab systest@ROOT.COMOPS.SITE"
+kadmin.local -q "ktadd -k /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE"
 ```
 
 ### 2. Ozone 볼륨 및 버킷 생성
@@ -95,7 +95,7 @@ ozone sh bucket list /firstvolume
 ### 3. Kafka 토픽 생성
 
 ```bash
-kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
+kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
 bash infra/kafka_setup.sh
 ```
 
@@ -188,7 +188,7 @@ Kafka 환경변수 (기본값이 설정되어 있으므로 변경 시에만 설�
 ```bash
 export KAFKA_BROKERS=ccycloud-1.jshin.root.comops.site:9093,...
 export KAFKA_TOPIC=sbi-transactions-raw
-export KAFKA_KEYTAB=/root/systest.keytab
+export KAFKA_KEYTAB=/opt/cloudera/systest.keytab
 export KAFKA_PRINCIPAL=systest@ROOT.COMOPS.SITE
 export KAFKA_CA_PEM=/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_cacerts.pem
 ```
@@ -230,7 +230,7 @@ spark-submit \
   --master yarn \
   --deploy-mode client \
   --principal systest@ROOT.COMOPS.SITE \
-  --keytab /root/systest.keytab \
+  --keytab /opt/cloudera/systest.keytab \
   --properties-file conf/spark-defaults.conf \
   --py-files spark/etl/rules.py \
   spark/etl/fraud_detection_etl.py
@@ -327,7 +327,7 @@ sbi-realtime-fraud-detection/
 ### Kerberos 티켓 만료
 
 ```bash
-kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
+kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
 klist
 ```
 
@@ -352,7 +352,7 @@ LoginException: the client is being asked for a password
 직접 실행 시:
 
 ```bash
-kinit -kt /root/systest.keytab systest@ROOT.COMOPS.SITE
+kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
 ```
 
 ### Ozone `ClassNotFoundException: RootedOzoneFs`

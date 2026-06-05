@@ -14,7 +14,7 @@ Spark ETL 잡 — sbi_raw.transactions → 사기 탐지 룰 적용 → sbi_cura
       --master yarn \
       --deploy-mode cluster \
       --principal systest@ROOT.COMOPS.SITE \
-      --keytab /root/systest.keytab \
+      --keytab /opt/cloudera/systest.keytab \
       --properties-file /path/to/conf/spark_iceberg.conf \
       --py-files spark/etl/rules.py \
       spark/etl/fraud_detection_etl.py --dt 2024-06-15
@@ -49,7 +49,7 @@ logger = logging.getLogger("SBI-FraudETL")
 # ---------------------------------------------------------------------------
 # 환경 설정
 # ---------------------------------------------------------------------------
-KEYTAB    = os.environ.get("SPARK_KEYTAB",    "/root/systest.keytab")
+KEYTAB    = os.environ.get("SPARK_KEYTAB",    "/opt/cloudera/systest.keytab")
 PRINCIPAL = os.environ.get("SPARK_PRINCIPAL", "systest@ROOT.COMOPS.SITE")
 
 RAW_TABLE        = "sbi_raw.transactions"

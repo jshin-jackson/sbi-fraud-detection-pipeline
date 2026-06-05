@@ -7,14 +7,14 @@ Spark Batch Job — Kafka 원시 이벤트 → sbi_raw.transactions (Iceberg)
       --master yarn \
       --deploy-mode client \
       --principal systest@ROOT.COMOPS.SITE \
-      --keytab /root/systest.keytab \
+      --keytab /opt/cloudera/systest.keytab \
       --properties-file conf/spark_iceberg.conf \
       spark/stream/raw_ingest_job.py
 
 cron 등록 (1분마다):
     * * * * * cd /root/sbi-realtime-fraud-detection && \
       spark-submit --master yarn --deploy-mode client \
-      --principal systest@ROOT.COMOPS.SITE --keytab /root/systest.keytab \
+      --principal systest@ROOT.COMOPS.SITE --keytab /opt/cloudera/systest.keytab \
       --properties-file conf/spark_iceberg.conf \
       spark/stream/raw_ingest_job.py >> /var/log/sbi-ingest.log 2>&1
 
@@ -57,7 +57,7 @@ logger = logging.getLogger("SBI-RawIngest")
 # ---------------------------------------------------------------------------
 KAFKA_BROKERS      = os.environ.get("KAFKA_BROKERS",      "ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093")
 KAFKA_TOPIC        = os.environ.get("KAFKA_TOPIC",        "sbi-transactions-raw")
-KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       "/root/systest.keytab")
+KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       "/opt/cloudera/systest.keytab")
 KAFKA_PRINCIPAL    = os.environ.get("KAFKA_PRINCIPAL",    "systest@ROOT.COMOPS.SITE")
 KAFKA_TRUSTSTORE   = os.environ.get("KAFKA_TRUSTSTORE",   "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-in_cluster_truststore.jks")
 KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3")

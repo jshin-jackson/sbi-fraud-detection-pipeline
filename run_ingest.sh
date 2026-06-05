@@ -14,7 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-KEYTAB="/root/systest.keytab"
+KEYTAB="/opt/cloudera/systest.keytab"
 PRINCIPAL="systest@ROOT.COMOPS.SITE"
 
 # Kerberos 티켓 갱신 (useTicketCache=true 방식으로 Kafka 인증)
