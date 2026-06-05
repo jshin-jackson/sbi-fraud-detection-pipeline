@@ -48,7 +48,7 @@ KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "changeit")
 ICEBERG_TABLE    = "sbi_raw.transactions"
 CHECKPOINT_PATH  = os.environ.get(
     "CHECKPOINT_PATH",
-    "ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-raw/checkpoints/raw-ingest"
+    "ofs://ozone1780551922/firstvolume/sbi-raw/checkpoints/raw-ingest"
 )
 TRIGGER_INTERVAL = os.environ.get("TRIGGER_INTERVAL", "30 seconds")
 OUTPUT_MODE      = "append"

@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS sbi_raw.transactions (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD 파티션')
 STORED BY ICEBERG
-LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-raw/transactions'
+LOCATION 'ofs://ozone1780551922/firstvolume/sbi-raw/transactions'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.transactions (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', channel STRING COMMENT 'ONLINE|ATM|POS')
 STORED BY ICEBERG
-LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/transactions'
+LOCATION 'ofs://ozone1780551922/firstvolume/sbi-curated/transactions'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_alerts (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', fraud_reason STRING COMMENT 'HIGH_AMOUNT | VELOCITY | GEO_ANOMALY')
 STORED BY ICEBERG
-LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/fraud_alerts'
+LOCATION 'ofs://ozone1780551922/firstvolume/sbi-curated/fraud_alerts'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_summary (
 )
 PARTITIONED BY (dt STRING COMMENT '날짜 (YYYY-MM-DD)')
 STORED BY ICEBERG
-LOCATION 'ofs://ccycloud-1.jshin.root.comops.site:9862/firstvolume/sbi-curated/fraud_summary'
+LOCATION 'ofs://ozone1780551922/firstvolume/sbi-curated/fraud_summary'
 TBLPROPERTIES (
     'format-version'  = '2',
     'write.format.default' = 'parquet'
