@@ -70,6 +70,14 @@ kadmin.local -q "addprinc -randkey systest@ROOT.COMOPS.SITE"
 kadmin.local -q "ktadd -k /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE"
 ```
 
+keytab은 **모든 클러스터 노드**에 배포합니다:
+
+```bash
+scp /opt/cloudera/systest.keytab root@ccycloud-2.jshin.root.comops.site:/opt/cloudera/
+scp /opt/cloudera/systest.keytab root@ccycloud-3.jshin.root.comops.site:/opt/cloudera/
+scp /opt/cloudera/systest.keytab root@ccycloud-4.jshin.root.comops.site:/opt/cloudera/
+```
+
 ### 2. Ozone 볼륨 및 버킷 생성
 
 ```bash
@@ -119,15 +127,45 @@ curl -k -u admin:RANGER_ADMIN_PW \
 | `cm_ozone` | `sbi-ozone-curated-policy` | volume: `firstvolume` |
 | `cm_hive` | `sbi-hive-url-policy` | URL: `ofs://ozone1780551922/firstvolume/sbi-raw/*` 등 |
 
+**Iceberg 메타데이터 커밋용 정책 추가 필수:**
+
+Ranger UI → `cm_hive` → 새 정책 추가:
+
+| 항목 | 값 |
+|---|---|
+| Policy Name | `sbi-iceberg-storage-policy` |
+| Resource Type | `url` |
+| URL | `iceberg://*` |
+| Recursive | ✅ |
+| Users | `systest` |
+| Permissions | `All` (RW Storage 포함) |
+
+> Iceberg가 HMS에 스냅샷 메타데이터를 커밋할 때 `iceberg://db/table?snapshot=...` URL에 대한 `RWSTORAGE` 권한이 필요합니다.
+
 ### 5. Iceberg 테이블 생성
 
 ```bash
 beeline -u "jdbc:hive2://ccycloud-1.jshin.root.comops.site:10000/;principal=hive/_HOST@ROOT.COMOPS.SITE;ssl=true;sslTrustStore=/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks;trustStorePassword=zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3" -f infra/iceberg_ddl.sql
 ```
 
-### 6. Cloudera Manager Spark 설정
+### 6. Cloudera Manager 설정
 
-**CM → SPARK3_ON_YARN → Configuration → `spark-defaults.conf` Safety Valve** 에 아래 추가:
+#### 6-1. Hive Metastore 설정
+
+**CM → Hive → Configuration → "Hive Metastore Server Advanced Configuration Snippet (Safety Valve) for hive-site.xml"** 에 추가 후 **HMS 재시작**:
+
+```xml
+<property>
+  <name>hive.metastore.pre.event.listeners</name>
+  <value></value>
+</property>
+```
+
+> `StorageBasedAuthorizationPreEventListener`가 활성화된 경우 Ranger와 무관하게 Iceberg 커밋 시 `RWSTORAGE` 권한 오류가 발생합니다. 이 설정으로 비활성화합니다.
+
+#### 6-2. Spark 설정
+
+**CM → SPARK3_ON_YARN → Configuration → `spark-defaults.conf` Safety Valve** 에 추가:
 
 ```properties
 spark.jars=/opt/cloudera/parcels/CDH/jars/iceberg-spark-runtime-3.5_2.12-1.5.2.7.3.1.600-325.jar,/opt/cloudera/parcels/CDH/jars/spark-sql-kafka-0-10_2.12-3.5.4.7.3.1.600-325.jar,/opt/cloudera/parcels/CDH/jars/kafka-clients-3.4.1.7.3.1.600-325.jar
@@ -135,20 +173,17 @@ spark.jars=/opt/cloudera/parcels/CDH/jars/iceberg-spark-runtime-3.5_2.12-1.5.2.7
 spark.driver.extraClassPath=/opt/cloudera/parcels/CDH/jars/ozone-filesystem-hadoop3-1.4.0.7.3.1.600-325.jar:/opt/cloudera/parcels/CDH/jars/ozone-filesystem-common-1.4.0.7.3.1.600-325.jar
 spark.executor.extraClassPath=/opt/cloudera/parcels/CDH/jars/ozone-filesystem-hadoop3-1.4.0.7.3.1.600-325.jar:/opt/cloudera/parcels/CDH/jars/ozone-filesystem-common-1.4.0.7.3.1.600-325.jar
 
-spark.files=hdfs:///sbi/conf/kafka_jaas.conf
-
-spark.driver.extraJavaOptions=-Djava.security.auth.login.config=/root/sbi-realtime-fraud-detection/conf/kafka_jaas.conf --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
-
-spark.executor.extraJavaOptions=-Djava.security.auth.login.config=./kafka_jaas.conf --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
-
 spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
 spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog
 spark.sql.catalog.spark_catalog.type=hive
 spark.sql.catalog.spark_catalog.uri=thrift://ccycloud-1.jshin.root.comops.site:9083
+spark.hadoop.hive.metastore.sasl.enabled=true
+spark.hadoop.hive.metastore.kerberos.principal=hive/_HOST@ROOT.COMOPS.SITE
 
 spark.hadoop.fs.ofs.impl=org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
 spark.hadoop.ozone.om.service.ids=ozone1780551922
 spark.hadoop.ozone.om.address.ozone1780551922=ccycloud-1.jshin.root.comops.site:9862
+spark.yarn.access.hadoopFileSystems=ofs://ozone1780551922
 
 spark.sql.iceberg.merge-on-read.enabled=true
 spark.sql.iceberg.handle-timestamp-without-timezone=true
@@ -157,11 +192,8 @@ spark.sql.adaptive.coalescePartitions.enabled=true
 spark.sql.adaptive.skewJoin.enabled=true
 ```
 
-**CM → SPARK3_ON_YARN → Configuration → `spark-env.sh` Gateway Safety Valve** 에 추가:
-
-```bash
-export SPARK_CLASSPATH="/opt/cloudera/parcels/CDH/jars/ozone-filesystem-hadoop3-1.4.0.7.3.1.600-325.jar:/opt/cloudera/parcels/CDH/jars/ozone-filesystem-common-1.4.0.7.3.1.600-325.jar"
-```
+> - `spark.yarn.access.hadoopFileSystems`: executor 시작 전 Ozone 위임 토큰을 사전 수집합니다. 이 설정 없이는 executor가 OFS에 쓸 때 `CLIENT cannot authenticate via:[TOKEN, KERBEROS]` 오류가 발생합니다.
+> - `extraJavaOptions`(--add-opens, JAAS)는 CM이 자동 관리하므로 Safety Valve에 추가하지 않습니다.
 
 **Save Changes → Deploy Client Configuration**
 
@@ -202,11 +234,10 @@ chmod +x run_ingest.sh
 ```
 
 `run_ingest.sh` 가 수행하는 작업:
-1. `kinit` — Kerberos TGT 갱신
+1. `kinit` — Kerberos TGT 갱신 (Kafka SASL 및 Ozone 인증용)
 2. `HADOOP_CONF_DIR` / `YARN_CONF_DIR` 설정
-3. `SPARK_CLASSPATH` — Ozone filesystem JAR 로드
-4. `SPARK_CONF_DIR` — `conf/spark-defaults.conf` 자동 적용
-5. `spark-submit` 실행
+3. `SPARK_CLASSPATH` — Ozone filesystem JAR 로드 (driver JVM용)
+4. `spark-submit` — CM 관리 conf + `--properties-file`로 커스텀 설정 적용
 
 **cron 등록 (1분마다 자동 실행):**
 
@@ -274,9 +305,9 @@ sbi-realtime-fraud-detection/
 │   ├── iceberg_ddl.sql               # Iceberg 테이블 DDL (ofs:// LOCATION)
 │   └── ranger_policies.json          # Ranger 정책 (firstvolume 기반)
 ├── conf/
-│   ├── spark-defaults.conf           # Spark 설정 (SPARK_CONF_DIR로 자동 로드)
-│   ├── spark_iceberg.conf            # 레거시 참고용 (run_ingest.sh 미사용)
-│   └── kafka_jaas.conf               # Kafka Kerberos JAAS (useTicketCache)
+│   ├── spark-defaults.conf           # Spark 커스텀 설정 (--properties-file로 전달)
+│   ├── spark_iceberg.conf            # 레거시 참고용
+│   └── kafka_jaas.conf               # Kafka Kerberos JAAS (useKeyTab)
 ├── run_ingest.sh                     # Spark Batch Job 실행 스크립트 (kinit 포함)
 └── README.md
 ```
@@ -316,7 +347,7 @@ sbi-realtime-fraud-detection/
 | 구성 요소 | 인증 | 암호화 | 권한 관리 |
 |---|---|---|---|
 | Kafka | Kerberos GSSAPI | SASL_SSL (Auto-TLS) | Ranger Kafka 정책 |
-| Ozone | Kerberos | OFS + Auto-TLS | Ranger Ozone 정책 |
+| Ozone | Kerberos 위임 토큰 | OFS + Auto-TLS | Ranger Ozone 정책 |
 | Hive/Hue | Kerberos | SSL (Auto-TLS) | Ranger Hive 정책 |
 | YARN | Kerberos | Wire encryption | Ranger YARN 정책 |
 
@@ -364,12 +395,51 @@ kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
 export SPARK_CLASSPATH="/opt/cloudera/parcels/CDH/jars/ozone-filesystem-hadoop3-1.4.0.7.3.1.600-325.jar:/opt/cloudera/parcels/CDH/jars/ozone-filesystem-common-1.4.0.7.3.1.600-325.jar"
 ```
 
+### Executor Ozone 인증 오류 (TOKEN, KERBEROS)
+
+```
+AccessControlException: Client cannot authenticate via:[TOKEN, KERBEROS]
+```
+
+Executor 컨테이너에 Ozone 위임 토큰이 배포되지 않은 경우입니다.  
+`conf/spark-defaults.conf` 및 CM Safety Valve에 아래 설정이 있는지 확인하세요:
+
+```properties
+spark.yarn.access.hadoopFileSystems=ofs://ozone1780551922
+```
+
+### Iceberg RWSTORAGE 권한 오류
+
+```
+Permission denied: user [systest] does not have [RWSTORAGE] privilege
+on [iceberg://sbi_raw/transactions?snapshot=...]
+```
+
+두 가지 설정이 모두 필요합니다:
+
+**1. Ranger `sbi-iceberg-storage-policy` 확인** (`cm_hive` 서비스):
+- URL: `iceberg://*` (Recursive)
+- Users: `systest`
+- Permissions: All (RW Storage 포함)
+
+**2. HMS `hive.metastore.pre.event.listeners` 비활성화** (CM → Hive Metastore → hive-site.xml Safety Valve):
+
+```xml
+<property>
+  <name>hive.metastore.pre.event.listeners</name>
+  <value></value>
+</property>
+```
+
+설정 후 HMS 재시작 필수.
+
+> `StorageBasedAuthorizationPreEventListener`가 활성화되면 Ranger URL 정책과 무관하게 자체 권한 체크를 수행하여 항상 DENIED됩니다.
+
 ### Iceberg `s3a://` 경로 오류
 
 이전에 `s3a://` LOCATION으로 생성된 테이블이 남아있는 경우입니다.
 
 ```bash
-# 테이블 삭제 후 재생성
 beeline -u "..." -e "DROP TABLE IF EXISTS sbi_raw.transactions; DROP TABLE IF EXISTS sbi_curated.transactions; DROP TABLE IF EXISTS sbi_curated.fraud_alerts; DROP TABLE IF EXISTS sbi_curated.fraud_summary;"
 beeline -u "..." -f infra/iceberg_ddl.sql
 ```
@@ -384,6 +454,19 @@ User hive doesn't have READ permission to access volume Volume:firstvolume
 sudo -u hdfs ozone sh volume addacl /firstvolume --acl "user:hive:rwlc"
 sudo -u hdfs ozone sh bucket addacl /firstvolume/sbi-raw --acl "user:hive:rwlc"
 sudo -u hdfs ozone sh bucket addacl /firstvolume/sbi-curated --acl "user:hive:rwlc"
+```
+
+### HMS 연결 끊김 (Socket is closed by peer)
+
+```
+TTransportException: Socket is closed by peer
+```
+
+HMS Kerberos 인증 설정이 없는 경우입니다. `conf/spark-defaults.conf`에 확인:
+
+```properties
+spark.hadoop.hive.metastore.sasl.enabled=true
+spark.hadoop.hive.metastore.kerberos.principal=hive/_HOST@ROOT.COMOPS.SITE
 ```
 
 ### 처음부터 재처리 (Kafka earliest)
