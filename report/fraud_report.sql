@@ -15,16 +15,16 @@
 
 
 -- ---------------------------------------------------------------------------
--- 1. 일별 사기 현황 요약 (최근 30일)
+-- 1. Daily fraud summary (last 30 days)
 -- ---------------------------------------------------------------------------
 SELECT
-    dt                           AS 날짜,
-    SUM(total_txn)               AS 총_거래건수,
-    SUM(fraud_txn)               AS 사기_건수,
-    ROUND(SUM(fraud_amount), 0)  AS 사기_금액_INR,
+    dt                           AS date,
+    SUM(total_txn)               AS total_txn_count,
+    SUM(fraud_txn)               AS fraud_count,
+    ROUND(SUM(fraud_amount), 0)  AS fraud_amount_INR,
     ROUND(
         SUM(fraud_txn) * 100.0 / NULLIF(SUM(total_txn), 0), 2
-    )                            AS 사기율_PCT
+    )                            AS fraud_rate_pct
 FROM sbi_curated.fraud_summary
 GROUP BY dt
 ORDER BY dt DESC
@@ -32,45 +32,44 @@ LIMIT 30;
 
 
 -- ---------------------------------------------------------------------------
--- 2. 채널별 사기 비율 (최근 7일)
--- Hive 날짜 함수: date_sub(current_date(), 7)
+-- 2. Fraud rate by channel (last 7 days)
 -- ---------------------------------------------------------------------------
 SELECT
-    channel                      AS 채널,
-    SUM(total_txn)               AS 총_거래건수,
-    SUM(fraud_txn)               AS 사기_건수,
+    channel                      AS channel,
+    SUM(total_txn)               AS total_txn_count,
+    SUM(fraud_txn)               AS fraud_count,
     ROUND(
         SUM(fraud_txn) * 100.0 / NULLIF(SUM(total_txn), 0), 2
-    )                            AS 사기율_PCT,
-    ROUND(SUM(fraud_amount), 0)  AS 사기_총액_INR
+    )                            AS fraud_rate_pct,
+    ROUND(SUM(fraud_amount), 0)  AS fraud_amount_INR
 FROM sbi_curated.fraud_summary
 WHERE dt >= date_format(date_sub(current_date(), 7), 'yyyy-MM-dd')
 GROUP BY channel
-ORDER BY 사기율_PCT DESC;
+ORDER BY fraud_rate_pct DESC;
 
 
 -- ---------------------------------------------------------------------------
--- 3. 사기 유형별 건수 및 금액
+-- 3. Fraud count and amount by type
 -- ---------------------------------------------------------------------------
 SELECT
-    fraud_reason                 AS 사기_유형,
-    COUNT(*)                     AS 건수,
-    ROUND(SUM(amount), 0)        AS 총_금액_INR,
-    ROUND(AVG(fraud_score), 4)   AS 평균_사기점수,
-    ROUND(MAX(amount), 0)        AS 최대_금액_INR
+    fraud_reason                 AS fraud_type,
+    COUNT(*)                     AS count,
+    ROUND(SUM(amount), 0)        AS total_amount_INR,
+    ROUND(AVG(fraud_score), 4)   AS avg_fraud_score,
+    ROUND(MAX(amount), 0)        AS max_amount_INR
 FROM sbi_curated.fraud_alerts
 GROUP BY fraud_reason
-ORDER BY 건수 DESC;
+ORDER BY count DESC;
 
 
 -- ---------------------------------------------------------------------------
--- 4. 시간대별 사기 발생 패턴 (최근 7일, 히트맵용)
+-- 4. Hourly fraud pattern (last 7 days, heatmap)
 -- ---------------------------------------------------------------------------
 SELECT
-    dt                           AS 날짜,
-    hour                         AS 시간,
-    SUM(fraud_txn)               AS 사기_건수,
-    ROUND(AVG(fraud_rate), 4)    AS 평균_사기율_PCT
+    dt                           AS date,
+    hour                         AS hour,
+    SUM(fraud_txn)               AS fraud_count,
+    ROUND(AVG(fraud_rate), 4)    AS avg_fraud_rate_pct
 FROM sbi_curated.fraud_summary
 WHERE dt >= date_format(date_sub(current_date(), 7), 'yyyy-MM-dd')
 GROUP BY dt, hour
@@ -78,56 +77,54 @@ ORDER BY dt, hour;
 
 
 -- ---------------------------------------------------------------------------
--- 5. 고위험 계좌 TOP 10 (사기 건수 기준)
--- COLLECT_SET: Hive 3.x 지원 집합 집계 함수
+-- 5. Top 10 high-risk accounts (by fraud count)
 -- ---------------------------------------------------------------------------
 SELECT
-    account_id                   AS 계좌ID,
-    COUNT(*)                     AS 사기_건수,
-    ROUND(SUM(amount), 0)        AS 사기_총액_INR,
-    MIN(event_timestamp)         AS 최초_사기_시각,
-    MAX(event_timestamp)         AS 최근_사기_시각,
-    COLLECT_SET(fraud_reason)    AS 사기_유형목록
+    account_id                   AS account_id,
+    COUNT(*)                     AS fraud_count,
+    ROUND(SUM(amount), 0)        AS fraud_amount_INR,
+    MIN(event_timestamp)         AS first_fraud_at,
+    MAX(event_timestamp)         AS last_fraud_at,
+    COLLECT_SET(fraud_reason)    AS fraud_types
 FROM sbi_curated.fraud_alerts
 GROUP BY account_id
-ORDER BY 사기_건수 DESC
+ORDER BY fraud_count DESC
 LIMIT 10;
 
 
 -- ---------------------------------------------------------------------------
--- 6. 사기 거래 상세 (최근 100건)
+-- 6. Fraud transaction detail (latest 100)
 -- ---------------------------------------------------------------------------
 SELECT
     fa.alert_id,
     fa.transaction_id,
     fa.account_id,
-    fa.event_timestamp           AS 거래_시각,
-    fa.amount                    AS 금액_INR,
-    fa.channel                   AS 채널,
-    fa.fraud_reason              AS 사기_유형,
-    fa.fraud_score               AS 사기_점수,
-    fa.location_lat              AS 위도,
-    fa.location_lon              AS 경도,
-    fa.alerted_at                AS 알림_생성_시각
+    fa.event_timestamp           AS txn_timestamp,
+    fa.amount                    AS amount_INR,
+    fa.channel                   AS channel,
+    fa.fraud_reason              AS fraud_type,
+    fa.fraud_score               AS fraud_score,
+    fa.location_lat              AS latitude,
+    fa.location_lon              AS longitude,
+    fa.alerted_at                AS alerted_at
 FROM sbi_curated.fraud_alerts fa
 ORDER BY fa.alerted_at DESC
 LIMIT 100;
 
 
 -- ---------------------------------------------------------------------------
--- 7. 실시간 KPI 대시보드용 — 오늘 사기 현황
--- Hive 날짜 함수: date_format(current_date(), 'yyyy-MM-dd')
+-- 7. Real-time KPI dashboard — today's fraud summary
 -- ---------------------------------------------------------------------------
 SELECT
-    'TODAY'                                          AS 구분,
-    COUNT(*)                                         AS 총_거래,
-    SUM(CASE WHEN is_fraud THEN 1 ELSE 0 END)        AS 사기_건수,
+    'TODAY'                                          AS period,
+    COUNT(*)                                         AS total_txn,
+    SUM(CASE WHEN is_fraud THEN 1 ELSE 0 END)        AS fraud_count,
     ROUND(
         SUM(CASE WHEN is_fraud THEN 1.0 ELSE 0 END)
         / NULLIF(COUNT(*), 0) * 100, 2
-    )                                                AS 사기율_PCT,
+    )                                                AS fraud_rate_pct,
     ROUND(
         SUM(CASE WHEN is_fraud THEN amount ELSE 0 END), 0
-    )                                                AS 사기_총액_INR
+    )                                                AS fraud_amount_INR
 FROM sbi_curated.transactions
 WHERE dt = date_format(current_date(), 'yyyy-MM-dd');
