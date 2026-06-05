@@ -112,13 +112,6 @@ def save_offsets(raw_df) -> None:
 
 def build_spark_session() -> SparkSession:
     """Kerberos + Iceberg 설정이 포함된 SparkSession을 생성합니다."""
-    jaas_conf = (
-        f"com.sun.security.auth.module.Krb5LoginModule required "
-        f"useKeyTab=true storeKey=true "
-        f"keyTab=\"{KAFKA_KEYTAB}\" "
-        f"principal=\"{KAFKA_PRINCIPAL}\";"
-    )
-
     spark = (
         SparkSession.builder
         .appName("SBI-RawTransactionIngest-Batch")
@@ -127,12 +120,6 @@ def build_spark_session() -> SparkSession:
         .config("spark.sql.catalog.spark_catalog",
                 "org.apache.iceberg.spark.SparkSessionCatalog")
         .config("spark.sql.catalog.spark_catalog.type", "hive")
-        .config("spark.kafka.sasl.jaas.config", jaas_conf)
-        .config("spark.kafka.security.protocol", "SASL_SSL")
-        .config("spark.kafka.sasl.mechanism", "GSSAPI")
-        .config("spark.kafka.sasl.kerberos.service.name", "kafka")
-        .config("spark.kafka.ssl.truststore.location", KAFKA_TRUSTSTORE)
-        .config("spark.kafka.ssl.truststore.password", KAFKA_TRUSTSTORE_PW)
         .config("spark.kerberos.keytab", KAFKA_KEYTAB)
         .config("spark.kerberos.principal", KAFKA_PRINCIPAL)
         .getOrCreate()
@@ -143,12 +130,6 @@ def build_spark_session() -> SparkSession:
 
 def read_kafka_batch(spark: SparkSession, starting_offsets: str):
     """Kafka 토픽에서 배치 DataFrame을 읽습니다."""
-    jaas_conf = (
-        f"com.sun.security.auth.module.Krb5LoginModule required "
-        f"useKeyTab=true storeKey=true "
-        f"keyTab=\"{KAFKA_KEYTAB}\" "
-        f"principal=\"{KAFKA_PRINCIPAL}\";"
-    )
     return (
         spark.read
         .format("kafka")
@@ -157,12 +138,11 @@ def read_kafka_batch(spark: SparkSession, starting_offsets: str):
         .option("startingOffsets", starting_offsets)
         .option("endingOffsets", "latest")
         .option("failOnDataLoss", "false")
-        .option("kafka.security.protocol",            "SASL_SSL")
-        .option("kafka.sasl.mechanism",               "GSSAPI")
-        .option("kafka.sasl.kerberos.service.name",   "kafka")
-        .option("kafka.ssl.truststore.location",      KAFKA_TRUSTSTORE)
-        .option("kafka.ssl.truststore.password",      KAFKA_TRUSTSTORE_PW)
-        .option("kafka.sasl.jaas.config",             jaas_conf)
+        .option("kafka.security.protocol",          "SASL_SSL")
+        .option("kafka.sasl.mechanism",             "GSSAPI")
+        .option("kafka.sasl.kerberos.service.name", "kafka")
+        .option("kafka.ssl.truststore.location",    KAFKA_TRUSTSTORE)
+        .option("kafka.ssl.truststore.password",    KAFKA_TRUSTSTORE_PW)
         .load()
     )
 
