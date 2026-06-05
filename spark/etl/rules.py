@@ -141,7 +141,8 @@ def apply_geo_anomaly_rule(df: DataFrame) -> DataFrame:
             "time_diff_sec",
             F.when(
                 F.col("prev_ts").isNotNull(),
-                F.col("event_timestamp").cast("long") - F.col("prev_ts").cast("long")
+                F.unix_timestamp(F.col("event_timestamp").cast("timestamp"))
+                - F.unix_timestamp(F.col("prev_ts").cast("timestamp"))
             ).otherwise(F.lit(None).cast("long"))
         )
     )
