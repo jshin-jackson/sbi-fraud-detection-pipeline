@@ -1,14 +1,14 @@
 -- =============================================================================
 -- SBI 사기 탐지 데모 — 리포트 SQL
--- 대상: Hue SQL Editor (HiveServer2 기반)
--- 검증 환경: Cloudera CDP 7.3.1 / Hive 3.x on Iceberg
+-- 대상: Hue SQL Editor (Hive 및 Impala 모두 호환)
+-- 검증 환경: Cloudera CDP 7.3.1 / Hive 3.x / Impala on Iceberg
 --
 -- Hue 실행 방법:
---   1. Hue (https://hue.sbi.local) 접속
---   2. SQL Editor → 데이터베이스 선택: sbi_curated
+--   1. Hue (https://ccycloud-1.jshin.root.comops.site:8889) 접속
+--   2. SQL Editor → 엔진 선택 (Hive 또는 Impala) → 데이터베이스: sbi_curated
 --   3. 아래 쿼리를 각각 붙여넣고 실행
 --
--- Beeline 실행 방법:
+-- Beeline(Hive) 실행 방법:
 --   beeline -u "jdbc:hive2://ccycloud-1.jshin.root.comops.site:10000/;principal=hive/_HOST@ROOT.COMOPS.SITE;ssl=true;sslTrustStore=/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks;trustStorePassword=zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3" \
 --           -f fraud_report.sql
 -- =============================================================================
@@ -18,7 +18,7 @@
 -- 1. Daily fraud summary (last 30 days)
 -- ---------------------------------------------------------------------------
 SELECT
-    dt                           AS date,
+    dt                           AS txn_date,
     SUM(total_txn)               AS total_txn_count,
     SUM(fraud_txn)               AS fraud_count,
     ROUND(SUM(fraud_amount), 0)  AS fraud_amount_INR,
@@ -53,21 +53,21 @@ ORDER BY fraud_rate_pct DESC;
 -- ---------------------------------------------------------------------------
 SELECT
     fraud_reason                 AS fraud_type,
-    COUNT(*)                     AS count,
+    COUNT(*)                     AS fraud_cnt,
     ROUND(SUM(amount), 0)        AS total_amount_INR,
     ROUND(AVG(fraud_score), 4)   AS avg_fraud_score,
     ROUND(MAX(amount), 0)        AS max_amount_INR
 FROM sbi_curated.fraud_alerts
 GROUP BY fraud_reason
-ORDER BY count DESC;
+ORDER BY fraud_cnt DESC;
 
 
 -- ---------------------------------------------------------------------------
 -- 4. Hourly fraud pattern (last 7 days, heatmap)
 -- ---------------------------------------------------------------------------
 SELECT
-    dt                           AS date,
-    hour                         AS hour,
+    dt                           AS txn_date,
+    hour                         AS hour_of_day,
     SUM(fraud_txn)               AS fraud_count,
     ROUND(AVG(fraud_rate), 4)    AS avg_fraud_rate_pct
 FROM sbi_curated.fraud_summary
@@ -78,6 +78,7 @@ ORDER BY dt, hour;
 
 -- ---------------------------------------------------------------------------
 -- 5. Top 10 high-risk accounts (by fraud count)
+-- Note: COLLECT_SET is Hive-only. Use Hive engine in Hue for this query.
 -- ---------------------------------------------------------------------------
 SELECT
     account_id                   AS account_id,
@@ -90,6 +91,18 @@ FROM sbi_curated.fraud_alerts
 GROUP BY account_id
 ORDER BY fraud_count DESC
 LIMIT 10;
+
+-- Impala-compatible version of query 5 (without COLLECT_SET):
+-- SELECT
+--     account_id                   AS account_id,
+--     COUNT(*)                     AS fraud_count,
+--     ROUND(SUM(amount), 0)        AS fraud_amount_INR,
+--     MIN(event_timestamp)         AS first_fraud_at,
+--     MAX(event_timestamp)         AS last_fraud_at
+-- FROM sbi_curated.fraud_alerts
+-- GROUP BY account_id
+-- ORDER BY fraud_count DESC
+-- LIMIT 10;
 
 
 -- ---------------------------------------------------------------------------
