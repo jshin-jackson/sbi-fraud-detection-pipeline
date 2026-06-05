@@ -130,6 +130,13 @@ def build_spark_session() -> SparkSession:
 
 def read_kafka_batch(spark: SparkSession, starting_offsets: str):
     """Kafka 토픽에서 배치 DataFrame을 읽습니다."""
+    # JAAS 설정을 문자열로 직접 전달 — 파일 배포 불필요, 모든 executor에서 동작
+    jaas_conf = (
+        "com.sun.security.auth.module.Krb5LoginModule required "
+        "useKeyTab=true "
+        f"keyTab=\"{KAFKA_KEYTAB}\" "
+        f"principal=\"{KAFKA_PRINCIPAL}\";"
+    )
     return (
         spark.read
         .format("kafka")
@@ -141,6 +148,7 @@ def read_kafka_batch(spark: SparkSession, starting_offsets: str):
         .option("kafka.security.protocol",          "SASL_SSL")
         .option("kafka.sasl.mechanism",             "GSSAPI")
         .option("kafka.sasl.kerberos.service.name", "kafka")
+        .option("kafka.sasl.jaas.config",           jaas_conf)
         .option("kafka.ssl.truststore.location",    KAFKA_TRUSTSTORE)
         .option("kafka.ssl.truststore.password",    KAFKA_TRUSTSTORE_PW)
         .load()
