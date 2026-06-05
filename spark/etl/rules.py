@@ -59,10 +59,16 @@ def apply_velocity_rule(df: DataFrame) -> DataFrame:
 
     Window: account_id 기준, event_timestamp 기준 rangeBetween
     """
+    # TIMESTAMP_NTZ → epoch seconds 변환 후 정렬 (Spark 3.5 호환)
+    df = df.withColumn(
+        "_event_ts_epoch",
+        F.unix_timestamp(F.col("event_timestamp").cast("timestamp"))
+    )
+
     window_spec = (
         Window
         .partitionBy("account_id")
-        .orderBy(F.col("event_timestamp").cast("long"))
+        .orderBy(F.col("_event_ts_epoch"))
         .rangeBetween(-VELOCITY_WINDOW_SECONDS, 0)
     )
 
@@ -77,7 +83,7 @@ def apply_velocity_rule(df: DataFrame) -> DataFrame:
             F.col("txn_count_5min") >= VELOCITY_MAX_TRANSACTIONS,
             F.lit(True)
         ).otherwise(F.lit(False))
-    )
+    ).drop("_event_ts_epoch")
 
 
 # ---------------------------------------------------------------------------
