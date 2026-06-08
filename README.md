@@ -281,11 +281,12 @@ curl -k -u admin:RANGER_ADMIN_PW \
 
 | 서비스 | 정책명 | 리소스 | 권한 |
 |--------|--------|--------|------|
-| cm_kafka | sbi-kafka-policy | `sbi-transactions-*` | publish, consume |
-| cm_ozone | sbi-ozone-raw-policy | `volume=firstvolume, bucket=sbi-raw` | read, write, create, list |
-| cm_ozone | sbi-ozone-curated-policy | `volume=firstvolume, bucket=sbi-curated` | read, write, create, list |
-| cm_hive | sbi-hive-url-policy | `ofs://firstvolume/sbi-raw/*` 등 | All |
-| cm_hive | sbi-iceberg-storage-policy | `iceberg://*` | All (RW Storage 포함) |
+| cm_kafka | `sbi-fraud-demo-kafka-access` | `sbi-transactions-raw`, `sbi-transactions-dlq` | All |
+| cm_ozone | `sbi-fraud-demo-ozone-access` | `volume=firstvolume`, `bucket=*`, `key=*` | All (systest, hive, impala) |
+| cm_hive | `sbi-fraud-demo-hive-access` | `database=sbi_raw,sbi_curated`, `table=*`, `column=*` | All |
+
+> Demo 환경이므로 서비스별 1개 정책으로 단순화했습니다.  
+> `hive.metastore.pre.event.listeners`가 비활성화되어 있으므로 Hive URL 정책은 불필요합니다.
 
 ---
 
