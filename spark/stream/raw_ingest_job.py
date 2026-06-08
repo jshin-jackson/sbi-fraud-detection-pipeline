@@ -12,7 +12,7 @@ Spark Batch Job — Kafka 원시 이벤트 → sbi_raw.transactions (Iceberg)
       spark/stream/raw_ingest_job.py
 
 cron 등록 (1분마다):
-    * * * * * cd /root/sbi-realtime-fraud-detection && \
+    * * * * * cd /root/sbi-fraud-detection-pipeline && \
       spark-submit --master yarn --deploy-mode client \
       --principal systest@ROOT.COMOPS.SITE --keytab /opt/cloudera/systest.keytab \
       --properties-file conf/spark_iceberg.conf \

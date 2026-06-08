@@ -8,7 +8,7 @@
 #   scripts/run_ingest.sh
 #
 # cron 등록 (1분마다):
-#   * * * * * /root/sbi-realtime-fraud-detection/scripts/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
+#   * * * * * /root/sbi-fraud-detection-pipeline/scripts/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 # ================================================================
 set -euo pipefail
 

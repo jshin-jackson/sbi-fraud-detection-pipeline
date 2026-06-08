@@ -78,7 +78,7 @@ Step 9  결과 확인     bash scripts/run_report.sh  (또는 Hue SQL Editor)
 ## 프로젝트 구조
 
 ```
-sbi-realtime-fraud-detection/
+sbi-fraud-detection-pipeline/
 │
 ├── config/                             ← [가장 먼저 편집]
 │   ├── env.internal.conf               내부 테스트 환경 설정
@@ -155,7 +155,7 @@ python3 -m venv --system-site-packages /tmp/sbi-venv
 source /tmp/sbi-venv/bin/activate
 
 cd /tmp && tar xf sbi-wheels.tar
-pip install --no-index --find-links=./wheels/ -r /root/sbi-realtime-fraud-detection/data_gen/requirements.txt
+pip install --no-index --find-links=./wheels/ -r /root/sbi-fraud-detection-pipeline/data_gen/requirements.txt
 
 # 최종 확인
 python3 -c "import gssapi, kafka, sdv, pandas, numpy; print('All OK')"
@@ -370,7 +370,7 @@ bash scripts/run_ingest.sh
 ```bash
 crontab -e
 # 추가:
-* * * * * /root/sbi-realtime-fraud-detection/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
+* * * * * /root/sbi-fraud-detection-pipeline/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 ```
 
 ### 5-3. Spark ETL 실행 (Raw → Curated)
