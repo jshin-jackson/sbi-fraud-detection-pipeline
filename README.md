@@ -131,7 +131,7 @@ sbi-realtime-fraud-detection/
 
 ```bash
 # 빌드 도구 + gssapi 시스템 패키지 설치
-sudo dnf install -y python3-gssapi krb5-devel gcc python3-devel
+sudo yum install -y gcc python3-devel krb5-devel python3-gssapi
 
 # venv 생성 (시스템 gssapi 공유)
 python3 -m venv --system-site-packages /tmp/sbi-venv
@@ -148,7 +148,8 @@ scp sbi-wheels.tar systest@<클러스터-호스트>:/tmp/
 ### 클러스터 노드에서 (오프라인 설치)
 
 ```bash
-sudo dnf install -y python3-gssapi krb5-devel
+# 시스템 패키지 설치 (gssapi는 yum으로 설치 — pip wheels 불필요)
+sudo yum install -y gcc python3-devel krb5-devel python3-gssapi
 
 python3 -m venv --system-site-packages /tmp/sbi-venv
 source /tmp/sbi-venv/bin/activate
