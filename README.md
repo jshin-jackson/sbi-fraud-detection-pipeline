@@ -1,123 +1,269 @@
-# SBI 실시간 사기 탐지 데모
+# SBI Realtime Fraud Detection — Demo 가이드
 
-Cloudera CDP 7.3.1 온프레미스 **에어갭(Air-gapped)** 환경에서 동작하는 엔드-투-엔드 사기 탐지 데모입니다.
-
-```
-SDV → Kafka → Spark Batch (1분 주기) → Ozone/Iceberg(Raw) → Spark ETL → Ozone/Iceberg(Curated) → Hue(Report)
-```
-
-> **에어갭 환경 원칙**: 인터넷 연결 없이 동작합니다. Maven/PyPI 원격 다운로드를 사용하지 않으며,
-> 모든 JAR과 Python wheel은 사전에 준비된 로컬 파일을 사용합니다.
-
-## 기술 스택
-
-| 구성 요소 | 버전 / 제품 |
-|---|---|
-| Cloudera CDP | 7.3.1 온프레미스 (에어갭) |
-| OS | RHEL 9.6 |
-| JDK | OpenJDK 11 |
-| Apache Kafka | Cloudera SMM 내장 Kafka |
-| Apache Spark | 3.5.x / Scala 2.12 (YARN 실행) |
-| Apache Iceberg | 1.5.2 (CDP 파슬 내장) |
-| Apache Ozone | CDP 7.3.1 내장 (OFS `ofs://` 프로토콜) |
-| 보안 | Kerberos + Auto-TLS + Apache Ranger |
-| 데이터 생성 | Python 3.9.21 + SDV 1.9.0 |
-| Kafka Python 클라이언트 | kafka-python 2.x (confluent-kafka 미사용) |
-| 리포트 | Hue SQL Editor (Hive/Impala) |
+> **대상:** Cloudera를 처음 사용하는 SBI (State Bank of India) 고객  
+> **목적:** Cloudera 플랫폼으로 실시간 사기(Fraud) 탐지를 PoC로 시연
 
 ---
 
-## 클러스터 구성
+## 이 Demo는 무엇을 보여주나요?
 
-| 호스트 | 역할 |
-|---|---|
-| ccycloud-1.jshin.root.comops.site | Kafka, Ozone OM, HiveServer2, Ranger, Spark (드라이버) |
-| ccycloud-2.jshin.root.comops.site | Kafka, Ozone DataNode |
-| ccycloud-3.jshin.root.comops.site | Kafka, Ozone DataNode |
-| ccycloud-4.jshin.root.comops.site | Spark History Server |
+인도 최대 은행인 SBI에서 매일 수백만 건의 거래가 발생합니다.  
+이 중 사기(Fraud) 의심 거래를 **자동으로 탐지하고 데이터 레이크하우스에 저장**하는 것이 이 Demo의 목표입니다.
+
+### 탐지하는 3가지 사기 패턴
+
+| 패턴 | 설명 | 기준 |
+|------|------|------|
+| **HIGH_AMOUNT** | 단일 거래가 일정 금액 이상 | ₹5,00,000 (5 lakh) 이상 |
+| **VELOCITY** | 단시간 내 동일 계좌에서 반복 거래 | 5분 내 3회 이상 |
+| **GEO_ANOMALY** | 물리적으로 불가능한 위치 이동 | 500 km 초과 / 30분 이내 |
+
+### 사용하는 Cloudera 제품
+
+```
+Kafka  →  Spark Batch (1분 주기)  →  Ozone/Iceberg(Raw)  →  Spark ETL  →  Ozone/Iceberg(Curated)  →  Hue
+메시지큐     실시간 적재                  원시 데이터 저장          사기 탐지          정제 데이터 저장              결과 조회
+```
+
+| 제품 | 역할 | 버전 |
+|------|------|------|
+| **Kafka + SMM** | 거래 데이터 실시간 스트림 | CDP 7.3.1 |
+| **Spark 3.5** | Kafka 적재 및 사기 탐지 ETL | CDP 7.3.1 (YARN) |
+| **Apache Ozone** | 데이터 레이크 저장소 (OFS 프로토콜) | CDP 7.3.1 |
+| **Apache Iceberg** | 데이터 레이크하우스 테이블 형식 | 1.5.2 |
+| **Hive + Hue** | 탐지 결과 SQL 조회 | CDP 7.3.1 |
+| **Ranger** | 보안 정책 (누가 무엇을 볼 수 있는지) | CDP 7.3.1 |
 
 ---
 
-## 디렉터리 구조
+## 환경 정보
+
+```
+OS       : RHEL 9.6
+CM       : Cloudera Manager 7.13.1
+CDP      : 7.3.1
+네트워크 : Air-gapped (인터넷 차단 환경)
+보안     : Kerberos + Auto-TLS + Ranger (전체 활성화)
+실행 계정: systest
+Keytab   : /opt/cloudera/systest.keytab
+Python   : 3.9.x  ← RHEL 9.6 기본 내장, 추가 설치 불필요
+```
+
+> **Python 버전 확인:**
+> ```bash
+> python3 --version   # Python 3.9.x 출력 확인
+> ```
+
+---
+
+## 빠른 시작 (전체 흐름 요약)
+
+```
+Step 0  Python 환경   venv 생성 + air-gapped 패키지 설치
+Step 1  환경 설정     config/env.conf 편집 (호스트명 입력)
+Step 2  환경 검증     bash scripts/verify_env.sh
+Step 3  인프라 구성   bash infra/01_kafka_setup.sh
+                      bash infra/02_ozone_setup.sh
+                      beeline -f infra/03_iceberg_ddl.sql
+Step 4  Ranger 정책   Ranger UI에서 정책 추가/수정
+Step 5  CM 설정       HMS hive-site.xml + Spark Safety Valve 설정
+Step 6  데이터 생성   python data_gen/kafka_producer.py --rows 10000
+Step 7  Spark Ingest  bash scripts/run_ingest.sh  (또는 cron 1분 주기)
+Step 8  Spark ETL     bash scripts/run_etl.sh
+Step 9  결과 확인     bash scripts/run_report.sh  (또는 Hue SQL Editor)
+```
+
+---
+
+## 프로젝트 구조
 
 ```
 sbi-realtime-fraud-detection/
-├── config/                           # ★ 환경 설정 (AML 프로젝트와 동일 패턴)
-│   ├── env.internal.conf             #   Cloudera 내부 테스트 환경
-│   ├── env.customer.conf             #   SBI 고객 환경 (CHANGE_ME 플레이스홀더)
-│   └── env.conf                      #   symlink → 활성 환경 (git 제외)
-├── scripts/                          # ★ 실행 스크립트
-│   ├── verify_env.sh                 #   Phase 1: 전체 환경 자동 검증
-│   ├── run_ingest.sh                 #   Kafka → Raw Iceberg Spark Job
-│   ├── run_etl.sh                    #   Raw → Curated Spark ETL
-│   └── run_report.sh                 #   beeline 리포트 실행
+│
+├── config/                             ← [가장 먼저 편집]
+│   ├── env.internal.conf               내부 테스트 환경 설정
+│   ├── env.customer.conf               SBI 고객 환경 설정 (CHANGE_ME → 실제 값으로 교체)
+│   └── env.conf → env.internal.conf    현재 활성 환경 (symlink, git 제외)
+│
+├── scripts/
+│   ├── verify_env.sh                   환경 자동 검증 (Phase 1)
+│   ├── run_ingest.sh                   Kafka → Raw Iceberg Spark 실행
+│   ├── run_etl.sh                      Raw → Curated Spark ETL 실행
+│   └── run_report.sh                   beeline 리포트 실행 래퍼
+│
 ├── data_gen/
-│   ├── generate_transactions.py      #   SDV 합성 데이터 생성
-│   ├── kafka_producer.py             #   Kafka 전송 (kafka-python, Kerberos SASL_SSL)
-│   └── requirements.txt             #   Python 의존성
+│   ├── generate_transactions.py        사기 패턴 포함 거래 데이터 생성 (SDV)
+│   ├── kafka_producer.py               Kafka 직접 전송
+│   └── requirements.txt               Python 패키지 목록 + air-gapped 설치 가이드
+│
 ├── spark/
 │   ├── stream/
-│   │   └── raw_ingest_job.py         #   Spark Batch Job — Kafka → sbi_raw.transactions
+│   │   └── raw_ingest_job.py           Kafka → sbi_raw.transactions (배치, 오프셋 관리)
 │   └── etl/
-│       ├── fraud_detection_etl.py    #   Raw Iceberg → 룰 적용 → Curated Iceberg
-│       └── rules.py                  #   사기 탐지 룰 (HIGH_AMOUNT, VELOCITY, GEO_ANOMALY)
-├── report/
-│   └── fraud_report.sql              #   Hue SQL Editor용 리포트 (Hive/Impala 호환)
+│       ├── fraud_detection_etl.py      Raw → Curated (사기 탐지 룰 적용)
+│       └── rules.py                    탐지 룰 모듈 (HIGH_AMOUNT / VELOCITY / GEO_ANOMALY)
+│
 ├── infra/
-│   ├── 01_kafka_setup.sh             #   Kafka 토픽 생성
-│   ├── 02_ozone_setup.sh             #   Ozone 볼륨/버킷 생성
-│   ├── 03_iceberg_ddl.sql            #   Iceberg 테이블 DDL
-│   └── 04_ranger_policies.json       #   Ranger 정책
+│   ├── 01_kafka_setup.sh               Kafka 토픽 생성
+│   ├── 02_ozone_setup.sh               Ozone 볼륨/버킷 생성
+│   ├── 03_iceberg_ddl.sql              Iceberg 테이블 스키마
+│   └── 04_ranger_policies.json         Ranger 보안 정책 템플릿
+│
 ├── conf/
-│   ├── spark-defaults.conf           #   Spark 설정 (CM Safety Valve 정합)
-│   ├── spark_iceberg.conf            #   레거시 참고용
-│   └── kafka_jaas.conf               #   Kafka Kerberos JAAS
-├── run_ingest.sh                     #   루트 래퍼 (cron 호환성 — scripts/ 위임)
-└── README.md
+│   ├── spark-defaults.conf             Spark 런타임 설정 (CM Safety Valve 정합)
+│   ├── spark_iceberg.conf              레거시 참고용
+│   └── kafka_jaas.conf                 Kafka Kerberos JAAS
+│
+├── report/
+│   └── fraud_report.sql                Demo 검증 쿼리 7개 (Hive/Impala 호환)
+│
+└── run_ingest.sh                       루트 래퍼 (cron 호환 — scripts/ 위임)
 ```
 
 ---
 
-## 빠른 시작 (Phase 0~5)
+## Step 0 — Python 환경 구성 (Air-gapped)
 
-### Phase 0. 환경 설정 연결
+> **핵심 원칙:** `pip download`는 반드시 클러스터와 **동일한 OS인 RHEL 9.6 Bastion 머신**에서 실행합니다.
+> macOS 등 다른 OS에서 실행하면 `sdv` 의존성 wheel의 플랫폼 태그가 달라 설치가 실패합니다.
+
+### RHEL 9.6 Bastion 머신에서 (인터넷 연결, 1회만)
 
 ```bash
-cd /root/sbi-realtime-fraud-detection
+# 빌드 도구 + gssapi 시스템 패키지 설치
+sudo dnf install -y python3-gssapi krb5-devel gcc python3-devel
 
-# 내부 테스트 환경
-ln -sf config/env.internal.conf config/env.conf
+# venv 생성 (시스템 gssapi 공유)
+python3 -m venv --system-site-packages /tmp/sbi-venv
+source /tmp/sbi-venv/bin/activate
+pip install --upgrade pip
 
-# 고객 환경으로 전환 시
-# ln -sf config/env.customer.conf config/env.conf
-# → config/env.customer.conf의 CHANGE_ME 값을 실제 값으로 수정 후 전환
+# 패키지 다운로드
+pip download -r data_gen/requirements.txt -d ./wheels/
+
+tar cf sbi-wheels.tar wheels/
+scp sbi-wheels.tar systest@<클러스터-호스트>:/tmp/
 ```
 
-### Phase 1. 환경 검증
+### 클러스터 노드에서 (오프라인 설치)
 
 ```bash
+sudo dnf install -y python3-gssapi krb5-devel
+
+python3 -m venv --system-site-packages /tmp/sbi-venv
+source /tmp/sbi-venv/bin/activate
+
+cd /tmp && tar xf sbi-wheels.tar
+pip install --no-index --find-links=./wheels/ -r /root/sbi-realtime-fraud-detection/data_gen/requirements.txt
+
+# 최종 확인
+python3 -c "import gssapi, kafka, sdv, pandas, numpy; print('All OK')"
+```
+
+> **이후 모든 python 명령은 venv 활성화 후 실행:**
+> ```bash
+> source /tmp/sbi-venv/bin/activate
+> ```
+
+---
+
+## Phase 1 — 환경 설정 및 검증
+
+### 1-1. 설정 파일 편집
+
+`config/env.internal.conf`를 열어서 실제 클러스터 호스트명과 패스워드를 입력합니다.
+
+```bash
+# 변경할 항목 (CHANGE_ME 없는지 확인)
+KAFKA_BROKERS="실제-브로커1:9093,실제-브로커2:9093,실제-브로커3:9093"
+HMS_HOST="실제-HMS-호스트"
+HS2_HOST="실제-HS2-호스트"
+OZONE_OM_SERVICE_ID="ozone getconf -confKey ozone.om.service.ids 로 확인"
+OZONE_OM_ADDRESS="실제-OM-호스트:9862"
+OZONE_VOLUME="실제-볼륨명"
+TRUSTSTORE_PW="실제-truststore-패스워드"    # ← 반드시 입력
+```
+
+> **TRUSTSTORE_PW 확인 방법:**
+> ```bash
+> sudo cat /var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.pw
+> ```
+
+> **Ozone OM 서비스 ID 확인:**
+> ```bash
+> ozone getconf -confKey ozone.om.service.ids
+> ```
+
+### 1-2. 환경 검증 실행
+
+```bash
+ln -sf config/env.internal.conf config/env.conf   # 최초 1회
 source config/env.conf
 bash scripts/verify_env.sh
 ```
 
-**모든 항목이 OK여야 다음 Phase로 진행합니다.**
+모든 항목이 `[OK]`이면 다음 Phase로 진행합니다.
 
-### Phase 2. 인프라 설정
+**예상 출력:**
+```
+=== 1. 설정 파일 확인 ===
+  [OK]   KAFKA_BROKERS 설정됨
+  [OK]   HMS_HOST: ccycloud-1.jshin.root.comops.site
+  ...
+=== 2. Kerberos 인증 ===
+  [OK]   kinit 성공 (systest@ROOT.COMOPS.SITE)
+  [OK]   TGT 발급 확인
+...
+[완료] 모든 환경 검증 통과! Phase 2를 시작하세요.
+```
+
+---
+
+## Phase 2 — 인프라 구성
+
+### 2-1. Kafka 토픽 생성
 
 ```bash
 source config/env.conf
-
-# 2-1. Kafka 토픽 생성
 bash infra/01_kafka_setup.sh
+```
 
-# 2-2. Ozone 볼륨/버킷 생성
+생성되는 토픽:
+- `sbi-transactions-raw` — 거래 원시 데이터 (파티션 6개)
+- `sbi-transactions-dlq` — Dead Letter Queue (파티션 2개)
+
+### 2-2. Ozone 볼륨/버킷 생성
+
+```bash
 bash infra/02_ozone_setup.sh
+```
 
-# 2-3. Iceberg 테이블 생성
+생성되는 리소스:
+- `/${OZONE_VOLUME}/sbi-raw` — Raw 데이터 버킷
+- `/${OZONE_VOLUME}/sbi-curated` — Curated 데이터 버킷
+
+> `hive` 계정 권한도 함께 부여됩니다 (Iceberg DDL 실행 시 필요).
+
+### 2-3. Iceberg 테이블 생성
+
+```bash
 beeline -u "${HS2_JDBC_URL}" -f infra/03_iceberg_ddl.sql
 ```
 
-### Phase 3. Ranger 정책 등록
+생성되는 테이블:
+
+| 테이블 | 레이어 | 파티션 | 설명 |
+|--------|--------|--------|------|
+| `sbi_raw.transactions` | Raw | `dt` | Kafka 원시 이벤트 |
+| `sbi_curated.transactions` | Curated | `dt`, `channel` | 사기 플래그 포함 |
+| `sbi_curated.fraud_alerts` | Curated | `dt`, `fraud_reason` | 사기 판정 상세 |
+| `sbi_curated.fraud_summary` | Curated | `dt` | 시간대/채널별 집계 |
+
+---
+
+## Phase 3 — Ranger 정책 등록
+
+Ranger는 "누가 어떤 데이터에 접근할 수 있는지" 제어하는 보안 시스템입니다.
 
 기존에 정책이 없는 경우 REST API로 임포트:
 
@@ -128,20 +274,23 @@ curl -k -u admin:RANGER_ADMIN_PW \
   "https://${HS2_HOST}:6182/service/plugins/policies/importPoliciesFromFile?isOverride=false"
 ```
 
-> `isOverride=true` 는 **절대 사용하지 마세요** — 기존 모든 정책이 삭제됩니다.
+> **주의:** `isOverride=true`는 절대 사용하지 마세요 — 기존 정책이 모두 삭제됩니다.
 
-기존 정책이 있는 경우 Ranger UI에서 직접 수정:
+기존 정책이 있는 경우 Ranger UI(`https://<ranger-host>:6182`)에서 직접 수정/추가:
 
-| 서비스 | 정책명 | 수정 내용 |
-|---|---|---|
-| `cm_ozone` | `sbi-ozone-raw-policy` | volume: `firstvolume` |
-| `cm_ozone` | `sbi-ozone-curated-policy` | volume: `firstvolume` |
-| `cm_hive` | `sbi-hive-url-policy` | URL: `ofs://ozone1780551922/firstvolume/...` |
-| `cm_hive` | `sbi-iceberg-storage-policy` | URL: `iceberg://*`, RW Storage |
+| 서비스 | 정책명 | 리소스 | 권한 |
+|--------|--------|--------|------|
+| cm_kafka | sbi-kafka-policy | `sbi-transactions-*` | publish, consume |
+| cm_ozone | sbi-ozone-raw-policy | `volume=firstvolume, bucket=sbi-raw` | read, write, create, list |
+| cm_ozone | sbi-ozone-curated-policy | `volume=firstvolume, bucket=sbi-curated` | read, write, create, list |
+| cm_hive | sbi-hive-url-policy | `ofs://firstvolume/sbi-raw/*` 등 | All |
+| cm_hive | sbi-iceberg-storage-policy | `iceberg://*` | All (RW Storage 포함) |
 
-### Phase 4. Cloudera Manager 설정
+---
 
-#### 4-1. Hive Metastore 설정 (필수)
+## Phase 4 — Cloudera Manager 설정
+
+### 4-1. Hive Metastore 설정 (필수)
 
 **CM → Hive → Configuration → HMS hive-site.xml Safety Valve** 에 추가 후 **HMS 재시작**:
 
@@ -152,7 +301,10 @@ curl -k -u admin:RANGER_ADMIN_PW \
 </property>
 ```
 
-#### 4-2. Spark 설정
+> `StorageBasedAuthorizationPreEventListener`가 활성화된 경우 Ranger와 무관하게  
+> Iceberg 커밋 시 `RWSTORAGE` 권한 오류가 발생합니다. 이 설정으로 비활성화합니다.
+
+### 4-2. Spark 설정
 
 **CM → SPARK3_ON_YARN → Configuration → spark-defaults.conf Safety Valve** 에 추가:
 
@@ -165,14 +317,14 @@ spark.executor.extraClassPath=/opt/cloudera/parcels/CDH/jars/ozone-filesystem-ha
 spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
 spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog
 spark.sql.catalog.spark_catalog.type=hive
-spark.sql.catalog.spark_catalog.uri=thrift://ccycloud-1.jshin.root.comops.site:9083
+spark.sql.catalog.spark_catalog.uri=thrift://<HMS_HOST>:9083
 spark.hadoop.hive.metastore.sasl.enabled=true
-spark.hadoop.hive.metastore.kerberos.principal=hive/_HOST@ROOT.COMOPS.SITE
+spark.hadoop.hive.metastore.kerberos.principal=hive/_HOST@<KRB_REALM>
 
 spark.hadoop.fs.ofs.impl=org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
-spark.hadoop.ozone.om.service.ids=ozone1780551922
-spark.hadoop.ozone.om.address.ozone1780551922=ccycloud-1.jshin.root.comops.site:9862
-spark.yarn.access.hadoopFileSystems=ofs://ozone1780551922
+spark.hadoop.ozone.om.service.ids=<OZONE_OM_SERVICE_ID>
+spark.hadoop.ozone.om.address.<OZONE_OM_SERVICE_ID>=<OZONE_OM_ADDRESS>
+spark.yarn.access.hadoopFileSystems=ofs://<OZONE_OM_SERVICE_ID>
 
 spark.sql.iceberg.merge-on-read.enabled=true
 spark.sql.iceberg.handle-timestamp-without-timezone=true
@@ -183,28 +335,36 @@ spark.sql.adaptive.skewJoin.enabled=true
 
 **Save Changes → Deploy Client Configuration**
 
-### Phase 5. 데이터 생성 및 파이프라인 실행
+> `<HMS_HOST>`, `<KRB_REALM>`, `<OZONE_OM_SERVICE_ID>`, `<OZONE_OM_ADDRESS>`는  
+> `config/env.internal.conf`의 값으로 교체합니다.
 
-#### 5-1. 합성 데이터 생성 및 Kafka 전송
+---
+
+## Phase 5 — 데이터 생성 및 파이프라인 실행
+
+### 5-1. 합성 데이터 생성 및 Kafka 전송
 
 ```bash
-source config/env.conf
 source /tmp/sbi-venv/bin/activate
+source config/env.conf
 
+# 데이터 생성 + Kafka 전송 (정상 거래 + 사기 패턴 포함)
 python data_gen/kafka_producer.py --rows ${DEMO_ROWS} --rate ${DEMO_RATE}
 ```
 
-#### 5-2. Spark Ingest 실행 (Kafka → Raw Iceberg)
+**생성되는 데이터:**
+- 정상 거래 (SDV GaussianCopulaSynthesizer로 생성)
+- HIGH_AMOUNT 거래 (₹5 lakh 이상)
+- VELOCITY 거래 (동일 계좌 5분 내 반복)
+- GEO_ANOMALY 거래 (500 km 초과 이동)
+
+### 5-2. Spark Ingest 실행 (Kafka → Raw Iceberg)
 
 ```bash
 bash scripts/run_ingest.sh
-
-# 처음부터 재처리 시
-rm -f ${KAFKA_OFFSET_FILE}
-bash scripts/run_ingest.sh
 ```
 
-**cron 등록 (1분마다):**
+**cron 등록 (1분마다 자동 실행):**
 
 ```bash
 crontab -e
@@ -212,159 +372,242 @@ crontab -e
 * * * * * /root/sbi-realtime-fraud-detection/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 ```
 
-#### 5-3. Spark ETL 실행 (Raw → Curated)
+### 5-3. Spark ETL 실행 (Raw → Curated)
 
 ```bash
 bash scripts/run_etl.sh              # 어제 날짜 자동 처리
 bash scripts/run_etl.sh 2024-01-07   # 특정 날짜 처리
 ```
 
-#### 5-4. 리포트 확인
+### 5-4. 결과 확인
 
 ```bash
 bash scripts/run_report.sh
 ```
 
-또는 Hue(`https://ccycloud-1.jshin.root.comops.site:8889`) SQL Editor에서 `report/fraud_report.sql` 실행.
+또는 Hue(`https://<HS2_HOST>:8889`) SQL Editor에서 `report/fraud_report.sql` 실행.
 
----
+**예상 결과:**
+```
+fraud_type    | fraud_cnt | total_amount_INR
+HIGH_AMOUNT   |     42   |   38,500,000
+VELOCITY      |     18   |    9,200,000
+GEO_ANOMALY   |      7   |    4,100,000
+```
 
-## Python 패키지 사전 준비 (에어갭)
+### 5-5. Demo 시연 순서 (고객 앞)
 
-```bash
-# [인터넷 가능한 Bastion 머신에서]
-python3 -m venv /tmp/sbi-venv
-source /tmp/sbi-venv/bin/activate
-pip download -r data_gen/requirements.txt -d ./wheels/
-tar czf sbi-wheels.tar.gz wheels/
-
-# [클러스터 노드로 복사 후]
-python3 -m venv /tmp/sbi-venv
-source /tmp/sbi-venv/bin/activate
-tar xzf sbi-wheels.tar.gz
-pip install --no-index --find-links=./wheels/ -r data_gen/requirements.txt
+```
+[1] Cloudera Manager  → 서비스 상태 Green 확인
+[2] SMM               → sbi-transactions-raw 메시지 수신율 그래프
+[3] YARN ResourceMgr  → Spark Job 실행 중 확인
+[4] Hue (Hive)        → sbi_raw.transactions 건수 증가 확인
+[5] Spark ETL 실행    → bash scripts/run_etl.sh
+[6] Hue (Impala)      → fraud_alerts 쿼리 → 사기 탐지 결과 확인
 ```
 
 ---
 
-## Iceberg 테이블 구조
-
-### Raw 레이어 (`ofs://ozone1780551922/firstvolume/sbi-raw/`)
-
-| 테이블 | 파티션 | 설명 |
-|---|---|---|
-| `sbi_raw.transactions` | `dt` | Kafka 원시 이벤트 전체 |
-
-### Curated 레이어 (`ofs://ozone1780551922/firstvolume/sbi-curated/`)
-
-| 테이블 | 파티션 | 설명 |
-|---|---|---|
-| `sbi_curated.transactions` | `dt`, `channel` | 정제된 거래 + 사기 플래그 |
-| `sbi_curated.fraud_alerts` | `dt`, `fraud_reason` | 사기 판정 거래 상세 |
-| `sbi_curated.fraud_summary` | `dt` | 시간대/채널별 집계 |
-
----
-
-## 사기 탐지 룰
-
-| 룰 ID | 조건 | fraud_reason |
-|---|---|---|
-| HIGH_AMOUNT | `amount > 500,000 INR` | `HIGH_AMOUNT` |
-| VELOCITY | 동일 계좌 5분 내 3건 이상 | `VELOCITY` |
-| GEO_ANOMALY | 이전 거래 대비 500 km 초과 이동 / 30분 이내 | `GEO_ANOMALY` |
-
----
-
-## 보안 구성 요약
-
-| 구성 요소 | 인증 | 암호화 | 권한 관리 |
-|---|---|---|---|
-| Kafka | Kerberos GSSAPI | SASL_SSL (Auto-TLS) | Ranger Kafka 정책 |
-| Ozone | Kerberos 위임 토큰 | OFS + Auto-TLS | Ranger Ozone 정책 |
-| Hive/Hue | Kerberos | SSL (Auto-TLS) | Ranger Hive 정책 |
-| YARN | Kerberos | Wire encryption | Ranger YARN 정책 |
-
----
-
-## 트러블슈팅
-
-### Kerberos 티켓 만료
+## 환경 전환 (내부 테스트 → SBI 고객 환경)
 
 ```bash
+# SBI 고객 환경으로 전환
+ln -sf config/env.customer.conf config/env.conf
+
+# 고객 클러스터 정보 입력 (CHANGE_ME 항목들)
+vi config/env.customer.conf
+
+# 환경 검증 후 동일하게 실행
 source config/env.conf
-kinit -kt "${KEYTAB}" "${PRINCIPAL}"
-klist
+bash scripts/verify_env.sh
+bash infra/01_kafka_setup.sh
+bash infra/02_ozone_setup.sh
+beeline -u "${HS2_JDBC_URL}" -f infra/03_iceberg_ddl.sql
 ```
 
-### `HADOOP_CONF_DIR must be set` 오류
+### 내부 환경으로 복귀
 
 ```bash
-export HADOOP_CONF_DIR=/etc/hadoop/conf
-export YARN_CONF_DIR=/etc/hadoop/conf
+ln -sf config/env.internal.conf config/env.conf
 ```
 
-### Kafka Kerberos 로그인 오류
+---
+
+## Kerberos 인증 방식 안내
+
+이 프로젝트의 모든 컴포넌트는 **kinit + OS TGT** 방식을 사용합니다.
 
 ```
-LoginException: the client is being asked for a password
+kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
+  ↓
+OS Kerberos 티켓 캐시(ccache)에 TGT 저장
+  ↓
+각 컴포넌트가 GSSAPI로 TGT 참조하여 자동 인증
 ```
 
-```bash
-source config/env.conf
-kinit -kt "${KEYTAB}" "${PRINCIPAL}"
+| 컴포넌트 | 인증 방식 |
+|---------|---------|
+| `kafka_producer.py` | 스크립트 내 `kinit` 자동 호출 |
+| `scripts/run_ingest.sh` | `source config/env.conf` 후 `kinit` 자동 호출 |
+| `scripts/run_etl.sh` | 동일 |
+| `scripts/run_report.sh` | 동일 |
+| Kafka CLI (`infra/*.sh`) | 스크립트 내 `kinit` 자동 호출 |
+| Spark (YARN) | `--keytab`, `--principal`로 YARN이 처리 |
+| Hue | 브라우저 로그인 시 Kerberos 자동 처리 |
+
+> **TGT 유효시간:** 기본 10시간. Demo가 10시간 이내라면 재인증 불필요.
+
+---
+
+## 문제 해결 가이드
+
+### Python 패키지 설치 실패 (Air-gapped)
+
+```
+증상: No matching distribution found
+원인: macOS 등 다른 OS에서 pip download 실행
+해결: RHEL 9.6 Bastion 머신에서 pip download 재실행
 ```
 
-### Executor Ozone 인증 오류 (TOKEN, KERBEROS)
+### Kerberos 인증 실패
 
 ```
-AccessControlException: Client cannot authenticate via:[TOKEN, KERBEROS]
+증상: kinit: Password incorrect 또는 Cannot find KDC
+원인: keytab 파일이 없거나 경로 오류
+해결:
+  ls -la /opt/cloudera/systest.keytab
+  klist -kt /opt/cloudera/systest.keytab
 ```
 
-CM Safety Valve에 다음 설정이 있는지 확인:
+### Kafka 연결 실패
 
-```properties
-spark.yarn.access.hadoopFileSystems=ofs://ozone1780551922
+```
+증상: SASL authentication failed
+원인 1: Kerberos TGT 만료 → source config/env.conf && kinit -kt "${KEYTAB}" "${PRINCIPAL}"
+원인 2: Ranger Kafka 정책 미적용 → Ranger UI 확인
+원인 3: KAFKA_BROKERS 호스트명 오류 → config/env.conf 확인
+```
+
+### Executor Ozone 인증 오류
+
+```
+증상: Client cannot authenticate via:[TOKEN, KERBEROS]
+원인: Spark YARN executor에 Ozone 위임 토큰 미배포
+해결: CM Safety Valve에 다음 설정 추가
+      spark.yarn.access.hadoopFileSystems=ofs://<OZONE_OM_SERVICE_ID>
 ```
 
 ### Iceberg RWSTORAGE 권한 오류
 
 ```
-Permission denied: user [systest] does not have [RWSTORAGE] privilege on [iceberg://...]
+증상: Permission denied: user [systest] does not have [RWSTORAGE] privilege
+원인: HMS의 StorageBasedAuthorizationPreEventListener 활성화
+해결:
+  1. CM → HMS hive-site.xml Safety Valve
+     hive.metastore.pre.event.listeners = (빈 값)
+  2. Ranger cm_hive → sbi-iceberg-storage-policy
+     URL: iceberg://* / 권한: All (RW Storage 포함) / 사용자: systest
 ```
 
-두 가지 설정 모두 필요:
+### HMS 연결 끊김
 
-1. **HMS hive-site.xml Safety Valve** — `hive.metastore.pre.event.listeners` 를 빈 값으로 설정 후 HMS 재시작
-2. **Ranger `sbi-iceberg-storage-policy`** — URL: `iceberg://*`, RW Storage 권한, systest 사용자
-
-### HMS 연결 끊김 (Socket is closed by peer)
-
-`conf/spark-defaults.conf`에 확인:
-
-```properties
-spark.hadoop.hive.metastore.sasl.enabled=true
-spark.hadoop.hive.metastore.kerberos.principal=hive/_HOST@ROOT.COMOPS.SITE
+```
+증상: TTransportException: Socket is closed by peer
+원인: HMS Kerberos 설정 누락
+해결: conf/spark-defaults.conf 확인
+      spark.hadoop.hive.metastore.sasl.enabled=true
+      spark.hadoop.hive.metastore.kerberos.principal=hive/_HOST@<KRB_REALM>
 ```
 
 ### Ozone 권한 오류 (hive 계정)
 
-```bash
-sudo -u hdfs ozone sh volume addacl /firstvolume --acl "user:hive:rwlc"
-sudo -u hdfs ozone sh bucket addacl /firstvolume/sbi-raw --acl "user:hive:rwlc"
-sudo -u hdfs ozone sh bucket addacl /firstvolume/sbi-curated --acl "user:hive:rwlc"
+```
+증상: User hive doesn't have READ permission to access volume
+원인: Ozone 볼륨/버킷에 hive 계정 ACL 미설정
+해결:
+  sudo -u hdfs ozone sh volume addacl /<VOLUME> --acl "user:hive:rwlc"
+  sudo -u hdfs ozone sh bucket addacl /<VOLUME>/sbi-raw --acl "user:hive:rwlc"
+  sudo -u hdfs ozone sh bucket addacl /<VOLUME>/sbi-curated --acl "user:hive:rwlc"
 ```
 
-### 처음부터 재처리 (Kafka earliest)
+### 처음부터 재처리
+
+```
+증상: "신규 메시지 없음, 종료" 또는 데이터 재적재 필요
+해결:
+  source config/env.conf
+  rm -f "${KAFKA_OFFSET_FILE}"
+  bash scripts/run_ingest.sh
+```
+
+---
+
+## 자주 묻는 질문 (FAQ)
+
+**Q: Cloudera를 처음 쓰는데 각 제품이 무엇인가요?**
+
+| 제품 | 쉬운 설명 | 비유 |
+|------|----------|------|
+| Kafka | 데이터를 잠시 보관하는 대기열 | 우편함 |
+| Spark | 데이터를 빠르게 처리하는 엔진 | 분석가 |
+| Ozone | 대용량 파일을 저장하는 분산 저장소 | 창고 |
+| Iceberg | 테이블 형식으로 데이터를 관리 | 정리된 서랍 |
+| Hive/Hue | SQL로 저장된 데이터를 조회 | 도서관 사서 |
+| Ranger | 누가 무엇에 접근할 수 있는지 제어 | 경비원 |
+
+**Q: confluent-kafka 대신 kafka-python을 사용하는 이유는?**
+
+`confluent-kafka`는 내부적으로 C 라이브러리(`librdkafka`)를 필요로 합니다.  
+Air-gapped RHEL 환경에서는 C 라이브러리 빌드가 어려워 설치가 실패할 수 있습니다.  
+`kafka-python`은 순수 Python으로 `pip download` → `--no-index` 방식으로 확실하게 설치됩니다.
+
+**Q: Spark Streaming 대신 Batch를 사용하는 이유는?**
+
+1분 주기 배치는 Spark Streaming과 비교해 운영이 훨씬 단순합니다.  
+checkpoint 파일 없이 오프셋 파일로 중복을 방지하며, cron으로 스케줄링할 수 있습니다.  
+실시간성이 1분 단위로 충분한 사기 탐지 시나리오에 적합합니다.
+
+**Q: Demo 데이터는 실제 거래 데이터인가요?**
+
+아니요, SDV(Synthetic Data Vault) 라이브러리로 생성한 가상 데이터입니다.  
+통계적 분포는 실제와 유사하지만, 실제 고객 정보는 포함되지 않습니다.
+
+**Q: Demo 후 데이터는 어떻게 정리하나요?**
 
 ```bash
 source config/env.conf
+
+# Kafka 토픽 메시지 초기화 (retention 기반 자동 삭제)
+# Iceberg 테이블 데이터 삭제 (Hue에서 실행)
+# TRUNCATE TABLE sbi_raw.transactions;
+# TRUNCATE TABLE sbi_curated.fraud_alerts;
+
+# 오프셋 파일 삭제
 rm -f "${KAFKA_OFFSET_FILE}"
-bash scripts/run_ingest.sh
 ```
 
-### JAR 파일 경로 확인
+---
 
-```bash
-find /opt/cloudera/parcels/CDH/jars/ -name "iceberg-spark-runtime*.jar"
-find /opt/cloudera/parcels/CDH/jars/ -name "ozone-filesystem-hadoop3*.jar"
-```
+## 기술 스택 상세
+
+| 항목 | 값 |
+|------|-----|
+| CDP 버전 | 7.3.1 |
+| Spark 버전 | 3.5.x (Scala 2.12) |
+| Iceberg 버전 | 1.5.2 |
+| Ozone 버전 | 1.4.0 (CDP 내장) |
+| Python | **3.9.x** (RHEL 9.6 기본 내장) |
+| Kafka 라이브러리 | kafka-python 2.0+ (순수 Python, air-gapped 호환) |
+| SDV | 1.9.0+ (GaussianCopulaSynthesizer) |
+| 보안 | Kerberos + Auto-TLS + Ranger (전체 활성화) |
+| Kerberos 방식 | kinit + OS TGT (GSSAPI) — 전 컴포넌트 동일 |
+| 실행 계정 | systest (단일 계정) |
+| Keytab 경로 | /opt/cloudera/systest.keytab |
+| Kafka 포트 | 9093 (SASL_SSL) |
+| HiveServer2 포트 | 10000 |
+| Ozone OM 포트 | 9862 |
+
+---
+
+*이 Demo는 Cloudera SBI Fraud Detection PoC 프로젝트입니다.*  
+*문의: Cloudera Solutions Engineering Team*
