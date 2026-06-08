@@ -376,9 +376,38 @@ crontab -e
 
 ### 5-3. Spark ETL 실행 (Raw → Curated)
 
+**사용법:**
+```
+scripts/run_etl.sh [YYYY-MM-DD]
+```
+
+| 파라미터 | 필수 여부 | 기본값 | 설명 |
+|----------|-----------|--------|------|
+| `YYYY-MM-DD` | 선택 | 어제 날짜 | ETL 처리할 파티션 날짜 (`dt=YYYY-MM-DD`) |
+
+**예제:**
 ```bash
-bash scripts/run_etl.sh              # 어제 날짜 자동 처리
-bash scripts/run_etl.sh 2024-01-07   # 특정 날짜 처리
+# 어제 날짜 자동 처리 (파라미터 생략)
+bash scripts/run_etl.sh
+
+# 특정 날짜 처리
+bash scripts/run_etl.sh 2026-06-07
+
+# 과거 날짜 재처리 (backfill)
+bash scripts/run_etl.sh 2026-06-01
+bash scripts/run_etl.sh 2026-06-02
+bash scripts/run_etl.sh 2026-06-03
+```
+
+> **참고:** 지정한 날짜(`dt`)에 `sbi_raw.transactions`에 데이터가 없으면  
+> `처리할 데이터가 없습니다. ETL 종료.` 메시지가 출력되고 정상 종료됩니다.  
+> 이 경우 Step 5-1~5-2(데이터 생성 → Ingest)가 먼저 실행되었는지 확인하세요.
+
+**cron 등록 (매일 새벽 1시 자동 실행):**
+```bash
+crontab -e
+# 추가:
+0 1 * * * /root/sbi-fraud-detection-pipeline/scripts/run_etl.sh >> /var/log/sbi-etl.log 2>&1
 ```
 
 ### 5-4. 결과 확인
