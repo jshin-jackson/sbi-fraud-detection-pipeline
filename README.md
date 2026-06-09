@@ -97,7 +97,8 @@ sbi-fraud-detection-pipeline/
 ├── data_gen/
 │   ├── generate_transactions.py        사기 패턴 포함 거래 데이터 생성 (SDV)
 │   ├── kafka_producer.py               Kafka 직접 전송
-│   └── requirements.txt               Python 패키지 목록 + air-gapped 설치 가이드
+│   ├── requirements.txt               전체 패키지 목록 (SDV 포함, air-gapped 설치 가이드)
+│   └── requirements-producer.txt      최소 패키지 목록 (kafka_producer.py --input 전용, SDV 불필요)
 │
 ├── spark/
 │   ├── stream/
@@ -128,10 +129,23 @@ sbi-fraud-detection-pipeline/
 
 ## Step 0 — Python 환경 구성 (Air-gapped)
 
+환경에 따라 두 가지 설치 방법을 제공합니다.
+
+| 파일 | 패키지 | 사용 경우 |
+|------|--------|----------|
+| `requirements.txt` | kafka-python, pandas, numpy, python-snappy, **sdv** | SDV로 합성 데이터 생성 포함 전체 기능 |
+| `requirements-producer.txt` | kafka-python, pandas, numpy, python-snappy | `kafka_producer.py --input` 전용, **SDV 불필요** |
+
+> **SDV wheels 반입이 어려운 경우:** `requirements-producer.txt`를 사용하고, CSV 파일은 인터넷이 되는 머신에서 미리 생성해 클러스터로 복사하세요.
+
+---
+
+### 방법 A — 전체 설치 (SDV 포함)
+
 > **핵심 원칙:** `pip download`는 반드시 클러스터와 **동일한 OS인 RHEL 9.6 Bastion 머신**에서 실행합니다.
 > macOS 등 다른 OS에서 실행하면 `sdv` 의존성 wheel의 플랫폼 태그가 달라 설치가 실패합니다.
 
-### RHEL 9.6 Bastion 머신에서 (인터넷 연결, 1회만)
+**RHEL 9.6 Bastion 머신에서 (인터넷 연결, 1회만):**
 
 ```bash
 # 빌드 도구 + gssapi 시스템 패키지 설치
@@ -149,7 +163,7 @@ tar cf sbi-wheels.tar wheels/
 scp sbi-wheels.tar systest@<클러스터-호스트>:/tmp/
 ```
 
-### 클러스터 노드에서 (오프라인 설치)
+**클러스터 노드에서 (오프라인 설치):**
 
 ```bash
 # 시스템 패키지 설치 (gssapi는 yum으로 설치 — pip wheels 불필요)
@@ -164,6 +178,50 @@ pip install --no-index --find-links=./wheels/ -r /root/sbi-fraud-detection-pipel
 
 # 최종 확인
 python3 -c "import gssapi, kafka, sdv, pandas, numpy; print('All OK')"
+```
+
+---
+
+### 방법 B — 최소 설치 (SDV 없이, kafka_producer.py --input 전용)
+
+SDV wheels 반입이 어려운 경우 사용합니다. CSV는 인터넷이 되는 머신에서 미리 생성합니다.
+
+**Step 1 — 인터넷 되는 머신에서 CSV 생성 (OS 무관):**
+
+```bash
+pip install sdv pandas
+python data_gen/generate_transactions.py --rows 10000 --output /tmp/txn.csv
+scp /tmp/txn.csv systest@<클러스터-호스트>:/tmp/
+```
+
+**Step 2 — Bastion (RHEL 9.6)에서 최소 wheels 다운로드 및 전송:**
+
+```bash
+pip download -r data_gen/requirements-producer.txt -d ./wheels-producer/
+tar cf sbi-wheels-producer.tar wheels-producer/
+scp sbi-wheels-producer.tar systest@<클러스터-호스트>:/tmp/
+```
+
+**Step 3 — 클러스터 노드에서 오프라인 설치:**
+
+```bash
+sudo yum install -y gcc python3-devel krb5-devel python3-gssapi gettext
+
+python3 -m venv --system-site-packages /tmp/sbi-venv
+source /tmp/sbi-venv/bin/activate
+
+cd /tmp && tar xf sbi-wheels-producer.tar
+pip install --no-index --find-links=./wheels-producer/ -r /root/sbi-fraud-detection-pipeline/data_gen/requirements-producer.txt
+
+# 최종 확인
+python3 -c "import kafka, pandas, numpy, snappy; print('All OK')"
+```
+
+**Step 4 — CSV로 Kafka 전송:**
+
+```bash
+source config/env.conf
+python data_gen/kafka_producer.py --input /tmp/txn.csv --rate 100
 ```
 
 > **이후 모든 python 명령은 venv 활성화 후 실행:**
