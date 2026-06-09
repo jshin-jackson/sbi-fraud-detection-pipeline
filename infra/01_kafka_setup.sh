@@ -21,7 +21,7 @@ KEYTAB="${KEYTAB:-/opt/cloudera/systest.keytab}"
 PRINCIPAL="${PRINCIPAL:-systest@ROOT.COMOPS.SITE}"
 
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
-TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3}"
+TRUSTSTORE_PASS="${TRUSTSTORE_PW:?TRUSTSTORE_PW 가 설정되지 않았습니다. source config/env.conf 를 먼저 실행하세요}"
 
 TOPIC_RAW="sbi-transactions-raw"
 TOPIC_DLQ="sbi-transactions-dlq"   # Dead Letter Queue

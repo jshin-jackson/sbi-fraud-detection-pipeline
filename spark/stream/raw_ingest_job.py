@@ -60,7 +60,7 @@ KAFKA_TOPIC        = os.environ.get("KAFKA_TOPIC",        "sbi-transactions-raw"
 KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       "/opt/cloudera/systest.keytab")
 KAFKA_PRINCIPAL    = os.environ.get("KAFKA_PRINCIPAL",    "systest@ROOT.COMOPS.SITE")
 KAFKA_TRUSTSTORE   = os.environ.get("KAFKA_TRUSTSTORE",   "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-in_cluster_truststore.jks")
-KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3")
+KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "")
 
 ICEBERG_TABLE = "sbi_raw.transactions"
 OFFSET_FILE   = os.environ.get("OFFSET_FILE", "/root/sbi-kafka-offsets.json")
