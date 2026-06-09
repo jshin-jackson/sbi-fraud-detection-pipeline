@@ -67,7 +67,9 @@ Step 3  인프라 구성   bash infra/01_kafka_setup.sh
                       beeline -f infra/03_iceberg_ddl.sql
 Step 4  Ranger 정책   Ranger UI에서 정책 추가/수정
 Step 5  CM 설정       HMS hive-site.xml + Spark Safety Valve 설정
-Step 6  데이터 생성   python data_gen/kafka_producer.py --rows 10000
+Step 6  데이터 생성   python data_gen/generate_transactions.py --rows 10000 --output /tmp/txn.csv
+                      python data_gen/kafka_producer.py --input /tmp/txn.csv
+                      (또는 즉석 생성: python data_gen/kafka_producer.py --rows 10000)
 Step 7  Spark Ingest  bash scripts/run_ingest.sh  (또는 cron 1분 주기)
 Step 8  Spark ETL     bash scripts/run_etl.sh
 Step 9  결과 확인     bash scripts/run_report.sh  (또는 Hue SQL Editor)
@@ -346,13 +348,62 @@ spark.sql.adaptive.skewJoin.enabled=true
 
 ## Phase 5 — 데이터 생성 및 파이프라인 실행
 
-### 5-1. 합성 데이터 생성 및 Kafka 전송
+### 5-1. 합성 데이터 생성 (`generate_transactions.py`)
+
+SDV(Synthetic Data Vault) 라이브러리로 합성 거래 데이터를 생성합니다.  
+`kafka_producer.py --rows` 옵션을 사용하면 이 단계를 건너뛸 수 있지만,  
+파일로 저장해두고 재사용하려면 단독 실행을 권장합니다.
+
+**사용법:**
+```
+python data_gen/generate_transactions.py [--rows N] [--output PATH] [--format csv|json]
+```
+
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `--rows` | 10000 | 생성할 거래 건수 |
+| `--output` | `transactions.csv` | 출력 파일 경로 (실행 디렉터리 기준) |
+| `--format` | `csv` | 출력 형식 (`csv` 또는 `json`) |
+
+**예제:**
+```bash
+source /tmp/sbi-venv/bin/activate
+
+# CSV 생성 (기본)
+python data_gen/generate_transactions.py --rows 10000 --output /tmp/txn.csv
+
+# JSON 생성
+python data_gen/generate_transactions.py --rows 5000 --output /tmp/txn.json --format json
+```
+
+**생성 과정 (3단계):**
+1. 시드 데이터 2,000건 생성 (정상 거래 95% + 사기 5%)
+2. SDV `GaussianCopulaSynthesizer` 학습 후 `--rows`건 합성
+3. 사기 패턴 명시 주입
+
+**주입되는 사기 패턴:**
+
+| 패턴 | 건수 | 내용 |
+|------|------|------|
+| HIGH_AMOUNT | 5건 | ₹6 lakh ~ ₹20 lakh 거래 |
+| VELOCITY | 3건 | `ACC_FRAUD_VEL` 계좌, 60초 간격 연속 거래 |
+| GEO_ANOMALY | 2건 | `ACC_FRAUD_GEO` 계좌, Delhi → Mumbai 10분 이동 |
+
+> **참고:** `kafka_producer.py --rows` 옵션 사용 시 내부적으로 이 스크립트를 호출하지만  
+> 임시 파일(`/tmp/tmpXXX.csv`)을 생성 후 즉시 삭제하므로 파일이 디스크에 남지 않습니다.
+
+---
+
+### 5-2. 합성 데이터 Kafka 전송
 
 ```bash
 source /tmp/sbi-venv/bin/activate
 source config/env.conf
 
-# 데이터 생성 + Kafka 전송 (정상 거래 + 사기 패턴 포함)
+# 방법 A: 파일에서 전송 (generate_transactions.py로 미리 생성한 경우)
+python data_gen/kafka_producer.py --input /tmp/txn.csv --rate ${DEMO_RATE}
+
+# 방법 B: 즉석 생성 + 전송 (파일 저장 없이)
 python data_gen/kafka_producer.py --rows ${DEMO_ROWS} --rate ${DEMO_RATE}
 ```
 
@@ -362,7 +413,7 @@ python data_gen/kafka_producer.py --rows ${DEMO_ROWS} --rate ${DEMO_RATE}
 - VELOCITY 거래 (동일 계좌 5분 내 반복)
 - GEO_ANOMALY 거래 (500 km 초과 이동)
 
-### 5-2. Spark Ingest 실행 (Kafka → Raw Iceberg)
+### 5-3. Spark Ingest 실행 (Kafka → Raw Iceberg)
 
 ```bash
 bash scripts/run_ingest.sh
@@ -376,7 +427,7 @@ crontab -e
 * * * * * /root/sbi-fraud-detection-pipeline/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 ```
 
-### 5-3. Spark ETL 실행 (Raw → Curated)
+### 5-4. Spark ETL 실행 (Raw → Curated)
 
 **사용법:**
 ```
@@ -403,7 +454,7 @@ bash scripts/run_etl.sh 2026-06-03
 
 > **참고:** 지정한 날짜(`dt`)에 `sbi_raw.transactions`에 데이터가 없으면  
 > `처리할 데이터가 없습니다. ETL 종료.` 메시지가 출력되고 정상 종료됩니다.  
-> 이 경우 Step 5-1~5-2(데이터 생성 → Ingest)가 먼저 실행되었는지 확인하세요.
+> 이 경우 Step 5-1~5-3(데이터 생성 → Kafka 전송 → Ingest)가 먼저 실행되었는지 확인하세요.
 
 **cron 등록 (매일 새벽 1시 자동 실행):**
 ```bash
@@ -412,7 +463,7 @@ crontab -e
 0 1 * * * /root/sbi-fraud-detection-pipeline/scripts/run_etl.sh >> /var/log/sbi-etl.log 2>&1
 ```
 
-### 5-4. 결과 확인
+### 5-5. 결과 확인
 
 ```bash
 bash scripts/run_report.sh
@@ -428,7 +479,7 @@ VELOCITY      |     18   |    9,200,000
 GEO_ANOMALY   |      7   |    4,100,000
 ```
 
-### 5-5. Demo 시연 순서 (고객 앞)
+### 5-6. Demo 시연 순서 (고객 앞)
 
 ```
 [1] Cloudera Manager  → 서비스 상태 Green 확인
