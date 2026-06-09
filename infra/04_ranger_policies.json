@@ -9,10 +9,10 @@
 
     {
       "service": "cm_kafka",
-      "name": "sbi-fraud-demo-kafka-access",
+      "name": "sbi-fd-kafka-admin",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "SBI Fraud Demo — systest: sbi-fd-transactions-* 토픽 전체 권한 (produce/consume/admin)",
+      "description": "SBI Fraud Detection — systest: sbi-fd-transactions-* 토픽 전체 권한 (produce/consume/admin)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
@@ -25,19 +25,22 @@
       "policyItems": [
         {
           "accesses": [
-            { "type": "publish",   "isAllowed": true },
-            { "type": "consume",   "isAllowed": true },
-            { "type": "configure", "isAllowed": true },
-            { "type": "describe",  "isAllowed": true },
-            { "type": "create",    "isAllowed": true },
-            { "type": "delete",    "isAllowed": true },
-            { "type": "all",       "isAllowed": true }
+            { "type": "publish",        "isAllowed": true },
+            { "type": "consume",        "isAllowed": true },
+            { "type": "configure",      "isAllowed": true },
+            { "type": "describe",       "isAllowed": true },
+            { "type": "create",         "isAllowed": true },
+            { "type": "delete",         "isAllowed": true },
+            { "type": "describe_configs","isAllowed": true },
+            { "type": "alter_configs",  "isAllowed": true },
+            { "type": "idempotent_write","isAllowed": true },
+            { "type": "all",            "isAllowed": true }
           ],
           "users": ["systest"],
           "groups": [],
           "roles": [],
           "conditions": [],
-          "delegateAdmin": false
+          "delegateAdmin": true
         }
       ],
       "denyPolicyItems": [],

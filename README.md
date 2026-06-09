@@ -286,7 +286,7 @@ curl -k -u admin:RANGER_ADMIN_PW \
 
 | 서비스 | 정책명 | 리소스 | 권한 |
 |--------|--------|--------|------|
-| cm_kafka | `sbi-fraud-demo-kafka-access` | `sbi-fd-transactions-raw`, `sbi-fd-transactions-dlq` | All |
+| cm_kafka | `sbi-fd-kafka-admin` | `sbi-fd-transactions-raw`, `sbi-fd-transactions-dlq` | All (delegateAdmin 포함) |
 | cm_ozone | `sbi-fraud-demo-ozone-access` | `volume=firstvolume`, `bucket=*`, `key=*` | All (systest, hive, impala) |
 | cm_hive | `sbi-fraud-demo-hive-access` | `database=sbi_raw,sbi_curated`, `table=*`, `column=*` | All |
 
