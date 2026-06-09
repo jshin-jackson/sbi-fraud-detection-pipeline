@@ -153,7 +153,8 @@ scp sbi-wheels.tar systest@<클러스터-호스트>:/tmp/
 
 ```bash
 # 시스템 패키지 설치 (gssapi는 yum으로 설치 — pip wheels 불필요)
-sudo yum install -y gcc python3-devel krb5-devel python3-gssapi
+# gettext: envsubst 명령 제공 (infra/03_iceberg_ddl.sh 실행에 필요)
+sudo yum install -y gcc python3-devel krb5-devel python3-gssapi gettext
 
 python3 -m venv --system-site-packages /tmp/sbi-venv
 source /tmp/sbi-venv/bin/activate
