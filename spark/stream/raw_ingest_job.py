@@ -3,20 +3,17 @@ Spark Batch Job — Kafka 원시 이벤트 → sbi_raw.transactions (Iceberg)
 1분마다 cron으로 스케줄링하여 실행합니다.
 
 실행 방법:
+    source config/env.conf
     spark-submit \
       --master yarn \
       --deploy-mode client \
-      --principal systest@ROOT.COMOPS.SITE \
-      --keytab /opt/cloudera/systest.keytab \
+      --principal "${PRINCIPAL}" \
+      --keytab "${KEYTAB}" \
       --properties-file conf/spark_iceberg.conf \
       spark/stream/raw_ingest_job.py
 
 cron 등록 (1분마다):
-    * * * * * cd /root/sbi-fraud-detection-pipeline && \
-      spark-submit --master yarn --deploy-mode client \
-      --principal systest@ROOT.COMOPS.SITE --keytab /opt/cloudera/systest.keytab \
-      --properties-file conf/spark_iceberg.conf \
-      spark/stream/raw_ingest_job.py >> /var/log/sbi-ingest.log 2>&1
+    * * * * * /root/sbi-fraud-detection-pipeline/scripts/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 
 환경변수:
     KAFKA_BROKERS     Kafka 브로커 주소
@@ -55,10 +52,10 @@ logger = logging.getLogger("SBI-RawIngest")
 # ---------------------------------------------------------------------------
 # 환경 설정
 # ---------------------------------------------------------------------------
-KAFKA_BROKERS      = os.environ.get("KAFKA_BROKERS",      "ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093")
+KAFKA_BROKERS      = os.environ.get("KAFKA_BROKERS",      "")
 KAFKA_TOPIC        = os.environ.get("KAFKA_TOPIC",        "sbi-transactions-raw")
-KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       "/opt/cloudera/systest.keytab")
-KAFKA_PRINCIPAL    = os.environ.get("KAFKA_PRINCIPAL",    "systest@ROOT.COMOPS.SITE")
+KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       os.environ.get("KEYTAB",    ""))
+KAFKA_PRINCIPAL    = os.environ.get("KAFKA_PRINCIPAL",    os.environ.get("PRINCIPAL", ""))
 KAFKA_TRUSTSTORE   = os.environ.get("KAFKA_TRUSTSTORE",   "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-in_cluster_truststore.jks")
 KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "")
 

@@ -36,7 +36,7 @@ export SPARK_CLASSPATH="${SPARK_OZONE_JARS}"
 # spark-defaults.conf 의 ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} 를 실제 값으로 치환
 SPARK_CONF_TMP=$(mktemp --suffix=.conf)
 trap "rm -f ${SPARK_CONF_TMP}" EXIT
-envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_OM_ADDRESS}' \
+envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_OM_ADDRESS} ${HMS_HOST} ${HMS_PORT} ${KRB_REALM} ${KEYTAB} ${PRINCIPAL}' \
   < "${ROOT_DIR}/conf/spark-defaults.conf" > "${SPARK_CONF_TMP}"
 
 spark-submit \

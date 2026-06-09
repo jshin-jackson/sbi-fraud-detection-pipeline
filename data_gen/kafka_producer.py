@@ -34,10 +34,10 @@ from kafka.errors import KafkaError
 # 설정
 # ---------------------------------------------------------------------------
 
-KAFKA_BROKERS = os.environ.get("KAFKA_BROKERS", "ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093")
+KAFKA_BROKERS = os.environ.get("KAFKA_BROKERS", "")
 KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "sbi-transactions-raw")
-KAFKA_KEYTAB = os.environ.get("KAFKA_KEYTAB", "/opt/cloudera/systest.keytab")
-KAFKA_PRINCIPAL = os.environ.get("KAFKA_PRINCIPAL", "systest@ROOT.COMOPS.SITE")
+KAFKA_KEYTAB = os.environ.get("KAFKA_KEYTAB", os.environ.get("KEYTAB",    ""))
+KAFKA_PRINCIPAL = os.environ.get("KAFKA_PRINCIPAL", os.environ.get("PRINCIPAL", ""))
 KAFKA_CA_PEM = os.environ.get("KAFKA_CA_PEM", "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_cacerts.pem")
 
 

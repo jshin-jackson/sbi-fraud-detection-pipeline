@@ -15,10 +15,10 @@ set -euo pipefail
 # 환경 설정
 # ---------------------------------------------------------------------------
 KAFKA_HOME="${KAFKA_HOME:-/opt/cloudera/parcels/CDH/lib/kafka}"
-BOOTSTRAP="${BOOTSTRAP:-ccycloud-1.jshin.root.comops.site:9093,ccycloud-2.jshin.root.comops.site:9093,ccycloud-3.jshin.root.comops.site:9093}"
+BOOTSTRAP="${BOOTSTRAP:-${KAFKA_BROKERS}}"
 
-KEYTAB="${KEYTAB:-/opt/cloudera/systest.keytab}"
-PRINCIPAL="${PRINCIPAL:-systest@ROOT.COMOPS.SITE}"
+KEYTAB="${KEYTAB:-}"
+PRINCIPAL="${PRINCIPAL:-}"
 
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
 TRUSTSTORE_PASS="${TRUSTSTORE_PW:?TRUSTSTORE_PW 가 설정되지 않았습니다. source config/env.conf 를 먼저 실행하세요}"

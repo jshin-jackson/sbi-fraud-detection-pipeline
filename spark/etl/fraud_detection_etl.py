@@ -10,11 +10,12 @@ Spark ETL 잡 — sbi_raw.transactions → 사기 탐지 룰 적용 → sbi_cura
        - sbi_curated.fraud_summary  : 시간대/채널별 집계
 
 실행 방법:
+    source config/env.conf
     spark-submit \
       --master yarn \
       --deploy-mode cluster \
-      --principal systest@ROOT.COMOPS.SITE \
-      --keytab /opt/cloudera/systest.keytab \
+      --principal "${PRINCIPAL}" \
+      --keytab "${KEYTAB}" \
       --properties-file /path/to/conf/spark_iceberg.conf \
       --py-files spark/etl/rules.py \
       spark/etl/fraud_detection_etl.py --dt 2024-06-15
@@ -49,8 +50,8 @@ logger = logging.getLogger("SBI-FraudETL")
 # ---------------------------------------------------------------------------
 # 환경 설정
 # ---------------------------------------------------------------------------
-KEYTAB    = os.environ.get("SPARK_KEYTAB",    "/opt/cloudera/systest.keytab")
-PRINCIPAL = os.environ.get("SPARK_PRINCIPAL", "systest@ROOT.COMOPS.SITE")
+KEYTAB    = os.environ.get("SPARK_KEYTAB",    os.environ.get("KEYTAB",    ""))
+PRINCIPAL = os.environ.get("SPARK_PRINCIPAL", os.environ.get("PRINCIPAL", ""))
 
 RAW_TABLE        = "sbi_raw.transactions"
 CURATED_TRANS    = "sbi_curated.transactions"
