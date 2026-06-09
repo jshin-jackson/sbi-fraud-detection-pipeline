@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ================================================================
-# 02_run_ingest.sh — Kafka → Raw Iceberg Spark Batch Job 실행
-# 1분마다 cron으로 스케줄링하여 실행합니다.
+# 02_run_ingest.sh — Kafka → Raw Iceberg Spark Batch Job runner
+# Intended to be scheduled via cron every minute.
 #
-# 사용법:
+# Usage:
 #   chmod +x scripts/02_run_ingest.sh
 #   scripts/02_run_ingest.sh
 #
-# cron 등록 (1분마다):
+# cron schedule (every minute):
 #   * * * * * /root/sbi-fraud-detection-pipeline/scripts/02_run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 # ================================================================
 set -euo pipefail
@@ -15,9 +15,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-# config 로드
+# Load config
 if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
-  echo "[ERROR] config/env.conf 파일이 없습니다."
+  echo "[ERROR] config/env.conf not found."
   echo "        ln -sf config/env.internal.conf config/env.conf"
   exit 1
 fi
@@ -28,15 +28,15 @@ echo "================================================================"
 echo " SBI Fraud Ingest (ENV: ${ENV_NAME}) — $(date)"
 echo "================================================================"
 
-# Kerberos 티켓 갱신
-echo "[INFO] kinit 실행: ${PRINCIPAL}"
+# Refresh Kerberos ticket
+echo "[INFO] Running kinit: ${PRINCIPAL}"
 kinit -kt "${KEYTAB}" "${PRINCIPAL}"
 klist
 
-# Ozone filesystem JAR을 드라이버 JVM 시작 전에 클래스패스에 추가
+# Add Ozone filesystem JAR to classpath before the driver JVM starts
 export SPARK_CLASSPATH="${SPARK_OZONE_JARS}"
 
-# spark-defaults.conf 의 ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} 를 실제 값으로 치환
+# Substitute ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} placeholders in spark-defaults.conf
 SPARK_CONF_TMP=$(mktemp --suffix=.conf)
 trap "rm -f ${SPARK_CONF_TMP}" EXIT
 envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_OM_ADDRESS} ${HMS_HOST} ${HMS_PORT} ${KRB_REALM} ${KEYTAB} ${PRINCIPAL}' \

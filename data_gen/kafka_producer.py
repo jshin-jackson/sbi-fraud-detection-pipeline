@@ -1,19 +1,19 @@
 """
-Kerberos(SASL_SSL) 인증을 사용하여 합성 거래 데이터를 Kafka 토픽으로 전송합니다.
+Sends synthetic transaction data to a Kafka topic using Kerberos (SASL_SSL) authentication.
 
-사용법:
-    # CSV 파일로부터 전송
+Usage:
+    # Send from a CSV file
     python kafka_producer.py --input transactions.csv --rate 100
 
-    # SDV 생성 후 바로 스트리밍 (--rows 옵션 사용)
+    # Generate via SDV and stream immediately (using --rows option)
     python kafka_producer.py --rows 5000 --rate 50
 
-환경변수:
-    KAFKA_BROKERS       Kafka 브로커 주소 (기본: ccycloud-1~3.jshin.root.comops.site:9093)
-    KAFKA_TOPIC         대상 토픽 (기본: sbi-fd-transactions-raw)
-    KAFKA_KEYTAB        Kerberos keytab 경로
-    KAFKA_PRINCIPAL     Kerberos 주체 (예: systest@ROOT.COMOPS.SITE)
-    KAFKA_CA_PEM        SSL CA 인증서 PEM 파일 경로
+Environment variables:
+    KAFKA_BROKERS       Kafka broker addresses (default: ccycloud-1~3.jshin.root.comops.site:9093)
+    KAFKA_TOPIC         Target topic (default: sbi-fd-transactions-raw)
+    KAFKA_KEYTAB        Kerberos keytab path
+    KAFKA_PRINCIPAL     Kerberos principal (e.g. systest@ROOT.COMOPS.SITE)
+    KAFKA_CA_PEM        SSL CA certificate PEM file path
 """
 
 import argparse
@@ -31,7 +31,7 @@ from kafka.errors import KafkaError
 
 
 # ---------------------------------------------------------------------------
-# 설정
+# Configuration
 # ---------------------------------------------------------------------------
 
 KAFKA_BROKERS = os.environ.get("KAFKA_BROKERS", "")
@@ -43,12 +43,12 @@ KAFKA_CA_PEM = os.environ.get("KAFKA_CA_PEM", "/var/lib/cloudera-scm-agent/agent
 
 def kinit() -> None:
     """
-    Kerberos TGT를 갱신합니다.
-    kafka-python은 OS 수준 Kerberos 티켓 캐시를 사용하므로
-    keytab으로 사전 kinit이 필요합니다.
+    Refreshes the Kerberos TGT.
+    kafka-python uses the OS-level Kerberos ticket cache,
+    so a prior kinit with the keytab is required.
     """
     if not os.path.exists(KAFKA_KEYTAB):
-        print("[경고] keytab 파일 없음, kinit 생략합니다.")
+        print("[WARNING] Keytab file not found, skipping kinit.")
         return
     try:
         subprocess.run(
@@ -56,21 +56,21 @@ def kinit() -> None:
             check=True,
             capture_output=True,
         )
-        print(f"[정보] kinit 성공: {KAFKA_PRINCIPAL}")
+        print(f"[INFO] kinit succeeded: {KAFKA_PRINCIPAL}")
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        print(f"[경고] kinit 실패 (기존 티켓 사용): {e}", file=sys.stderr)
+        print(f"[WARNING] kinit failed (using existing ticket): {e}", file=sys.stderr)
 
 
 def build_producer() -> KafkaProducer:
-    """Kerberos SASL_SSL KafkaProducer를 생성하여 반환합니다."""
+    """Creates and returns a Kerberos SASL_SSL KafkaProducer."""
     kinit()
 
     ssl_context = ssl.create_default_context()
     if os.path.exists(KAFKA_CA_PEM):
         ssl_context.load_verify_locations(cafile=KAFKA_CA_PEM)
-        print(f"[정보] SSL CA 인증서 로드: {KAFKA_CA_PEM}")
+        print(f"[INFO] SSL CA certificate loaded: {KAFKA_CA_PEM}")
     else:
-        print(f"[경고] CA PEM 파일 없음({KAFKA_CA_PEM}), SSL 검증 비활성화됩니다.", file=sys.stderr)
+        print(f"[WARNING] CA PEM file not found ({KAFKA_CA_PEM}), SSL verification disabled.", file=sys.stderr)
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
 
@@ -92,7 +92,7 @@ def build_producer() -> KafkaProducer:
 
 
 def row_to_json(row: dict) -> bytes:
-    """DataFrame row를 JSON bytes로 변환합니다."""
+    """Converts a DataFrame row to JSON bytes."""
     record = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
     if "is_fraud" in record:
         record["is_fraud"] = bool(record["is_fraud"])
@@ -101,11 +101,11 @@ def row_to_json(row: dict) -> bytes:
 
 def produce_from_dataframe(df: pd.DataFrame, rate: int) -> None:
     """
-    DataFrame을 지정한 rate(건/초)로 Kafka에 전송합니다.
+    Sends a DataFrame to Kafka at the specified rate (records/second).
 
     Args:
-        df:   전송할 거래 데이터프레임
-        rate: 초당 전송 건수 (0이면 최대 속도)
+        df:   Transaction DataFrame to send
+        rate: Records per second (0 for maximum speed)
     """
     producer = build_producer()
 
@@ -113,12 +113,12 @@ def produce_from_dataframe(df: pd.DataFrame, rate: int) -> None:
     total = len(df)
     sent = 0
 
-    print(f"Kafka 브로커: {KAFKA_BROKERS}")
-    print(f"토픽: {KAFKA_TOPIC}")
-    print(f"총 {total}건을 {rate}건/초 속도로 전송 시작...")
+    print(f"Kafka brokers: {KAFKA_BROKERS}")
+    print(f"Topic: {KAFKA_TOPIC}")
+    print(f"Sending {total} records at {rate} records/sec...")
 
     def _on_error(e: KafkaError) -> None:
-        print(f"[오류] 전송 실패: {e}", file=sys.stderr)
+        print(f"[ERROR] Send failed: {e}", file=sys.stderr)
 
     try:
         for _, row in df.iterrows():
@@ -129,34 +129,34 @@ def produce_from_dataframe(df: pd.DataFrame, rate: int) -> None:
 
             sent += 1
             if sent % 500 == 0:
-                print(f"  전송: {sent}/{total}")
+                print(f"  Sent: {sent}/{total}")
 
             if sleep_interval > 0:
                 time.sleep(sleep_interval)
 
         producer.flush(timeout=30)
-        print(f"전송 완료: {sent}건")
+        print(f"Send complete: {sent} records")
 
     except KafkaError as e:
-        print(f"[오류] Kafka 전송 중 오류 발생: {e}", file=sys.stderr)
+        print(f"[ERROR] Kafka send error: {e}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
-        print(f"\n중단됨. {sent}건 전송 완료.")
+        print(f"\nInterrupted. {sent} records sent.")
         producer.flush(timeout=10)
     finally:
         producer.close()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="SBI 거래 데이터 Kafka Producer")
+    parser = argparse.ArgumentParser(description="SBI transaction data Kafka Producer")
     source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument("--input", type=str, help="CSV 입력 파일 경로")
-    source.add_argument("--rows", type=int, help="SDV로 즉시 생성할 건수")
+    source.add_argument("--input", type=str, help="CSV input file path")
+    source.add_argument("--rows", type=int, help="Number of records to generate with SDV")
 
     parser.add_argument("--rate", type=int, default=100,
-                        help="초당 전송 건수 (기본: 100, 0=최대 속도)")
+                        help="Records per second (default: 100, 0=maximum speed)")
     parser.add_argument("--topic", type=str, default=None,
-                        help="Kafka 토픽명 (기본: 환경변수 KAFKA_TOPIC)")
+                        help="Kafka topic name (default: KAFKA_TOPIC environment variable)")
     args = parser.parse_args()
 
     global KAFKA_TOPIC
@@ -165,9 +165,9 @@ def main() -> None:
 
     if args.input:
         df = pd.read_csv(args.input)
-        print(f"파일 로드 완료: {args.input} ({len(df)}건)")
+        print(f"File loaded: {args.input} ({len(df)} records)")
     else:
-        # SDV 생성 모듈 임포트 (동일 디렉터리)
+        # Import SDV generation module from the same directory
         sys.path.insert(0, os.path.dirname(__file__))
         from generate_transactions import generate
 

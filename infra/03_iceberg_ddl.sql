@@ -1,9 +1,9 @@
 -- =============================================================================
--- SBI 사기 탐지 데모 — Iceberg 테이블 DDL
--- 스토리지: Apache Ozone (ofs://)
--- 카탈로그: Hive Metastore (HMS)
+-- SBI Fraud Detection Demo — Iceberg Table DDL
+-- Storage : Apache Ozone (ofs://)
+-- Catalog : Hive Metastore (HMS)
 -- =============================================================================
--- 실행 방법 (envsubst 로 환경변수 치환 후 beeline에 파이프):
+-- Execution (substitute environment variables with envsubst, then pipe to beeline):
 --   source config/env.conf
 --   envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
 --     | beeline -u "${HS2_JDBC_URL}"
@@ -11,41 +11,41 @@
 
 
 -- ---------------------------------------------------------------------------
--- 0. Ozone 버킷은 사전에 생성되어 있어야 합니다.
+-- 0. Ozone buckets must be created beforehand.
 --    ozone sh bucket create /${OZONE_VOLUME}/sbi-raw
 --    ozone sh bucket create /${OZONE_VOLUME}/sbi-curated
 -- ---------------------------------------------------------------------------
 
 
 -- =============================================================================
--- RAW 레이어 데이터베이스
+-- RAW layer database
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS sbi_raw
-  COMMENT 'SBI 사기 탐지 — Kafka 원시 이벤트 저장소';
--- 참고: 데이터베이스 기본 위치는 Hive warehouse를 사용합니다.
---       테이블 데이터는 각 CREATE TABLE의 LOCATION(ofs://)에 저장됩니다.
+  COMMENT 'SBI Fraud Detection — raw Kafka event store';
+-- Note: the database default location uses the Hive warehouse.
+--       Table data is stored at the LOCATION (ofs://) specified in each CREATE TABLE.
 
 
 -- ---------------------------------------------------------------------------
--- Raw 거래 테이블 (Kafka 이벤트 원본 그대로 적재)
+-- Raw transactions table (stores Kafka events as-is)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sbi_raw.transactions (
-    transaction_id  STRING   COMMENT 'UUID 거래 식별자',
-    account_id      STRING   COMMENT '계좌 ID',
-    event_timestamp TIMESTAMP COMMENT '거래 발생 시각 (ISO-8601)',
-    amount          DOUBLE   COMMENT '거래 금액 (INR)',
-    merchant_id     STRING   COMMENT '가맹점 ID',
-    merchant_cat    STRING   COMMENT '가맹점 업종 코드',
-    location_lat    DOUBLE   COMMENT '거래 위도',
-    location_lon    DOUBLE   COMMENT '거래 경도',
+    transaction_id  STRING   COMMENT 'UUID transaction identifier',
+    account_id      STRING   COMMENT 'Account ID',
+    event_timestamp TIMESTAMP COMMENT 'Transaction timestamp (ISO-8601)',
+    amount          DOUBLE   COMMENT 'Transaction amount (INR)',
+    merchant_id     STRING   COMMENT 'Merchant ID',
+    merchant_cat    STRING   COMMENT 'Merchant category code',
+    location_lat    DOUBLE   COMMENT 'Transaction latitude',
+    location_lon    DOUBLE   COMMENT 'Transaction longitude',
     channel         STRING   COMMENT 'ONLINE | ATM | POS',
-    is_fraud_label  BOOLEAN  COMMENT 'SDV 생성 레이블 (검증용)',
-    kafka_offset    BIGINT   COMMENT 'Kafka 파티션 오프셋',
-    kafka_partition INT      COMMENT 'Kafka 파티션 번호',
-    ingested_at     TIMESTAMP COMMENT 'Spark Stream 적재 시각'
+    is_fraud_label  BOOLEAN  COMMENT 'SDV-generated label (for validation)',
+    kafka_offset    BIGINT   COMMENT 'Kafka partition offset',
+    kafka_partition INT      COMMENT 'Kafka partition number',
+    ingested_at     TIMESTAMP COMMENT 'Spark ingest timestamp'
 )
-PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD 파티션')
+PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD partition')
 STORED BY ICEBERG
 LOCATION 'ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}/sbi-raw/transactions'
 TBLPROPERTIES (
@@ -59,29 +59,29 @@ TBLPROPERTIES (
 
 
 -- =============================================================================
--- CURATED 레이어 데이터베이스
+-- CURATED layer database
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS sbi_curated
-  COMMENT 'SBI 사기 탐지 — 정제 및 집계 결과 저장소';
--- 참고: 테이블 데이터는 각 CREATE TABLE의 LOCATION(ofs://)에 저장됩니다.
+  COMMENT 'SBI Fraud Detection — enriched and aggregated result store';
+-- Note: Table data is stored at the LOCATION (ofs://) specified in each CREATE TABLE.
 
 
 -- ---------------------------------------------------------------------------
--- Curated 거래 테이블 (사기 여부 플래그 포함)
+-- Curated transactions table (includes fraud flag)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sbi_curated.transactions (
-    transaction_id  STRING    COMMENT 'UUID 거래 식별자',
-    account_id      STRING    COMMENT '계좌 ID',
-    event_timestamp TIMESTAMP COMMENT '거래 발생 시각',
-    amount          DOUBLE    COMMENT '거래 금액 (INR)',
-    merchant_id     STRING    COMMENT '가맹점 ID',
-    merchant_cat    STRING    COMMENT '가맹점 업종 코드',
-    location_lat    DOUBLE    COMMENT '거래 위도',
-    location_lon    DOUBLE    COMMENT '거래 경도',
-    is_fraud        BOOLEAN   COMMENT '사기 여부 (룰 기반 판정)',
-    fraud_reasons   STRING    COMMENT '사기 이유 목록 (쉼표 구분)',
-    etl_processed_at TIMESTAMP COMMENT 'ETL 처리 시각'
+    transaction_id  STRING    COMMENT 'UUID transaction identifier',
+    account_id      STRING    COMMENT 'Account ID',
+    event_timestamp TIMESTAMP COMMENT 'Transaction timestamp',
+    amount          DOUBLE    COMMENT 'Transaction amount (INR)',
+    merchant_id     STRING    COMMENT 'Merchant ID',
+    merchant_cat    STRING    COMMENT 'Merchant category code',
+    location_lat    DOUBLE    COMMENT 'Transaction latitude',
+    location_lon    DOUBLE    COMMENT 'Transaction longitude',
+    is_fraud        BOOLEAN   COMMENT 'Fraud flag (rule-based determination)',
+    fraud_reasons   STRING    COMMENT 'List of fraud reasons (comma-separated)',
+    etl_processed_at TIMESTAMP COMMENT 'ETL processing timestamp'
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', channel STRING COMMENT 'ONLINE|ATM|POS')
 STORED BY ICEBERG
@@ -96,19 +96,19 @@ TBLPROPERTIES (
 
 
 -- ---------------------------------------------------------------------------
--- Fraud Alerts 테이블 (사기 판정 거래 상세)
+-- Fraud Alerts table (fraud transaction details)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sbi_curated.fraud_alerts (
-    alert_id        STRING    COMMENT 'UUID 알림 식별자',
-    transaction_id  STRING    COMMENT '원본 거래 ID',
-    account_id      STRING    COMMENT '계좌 ID',
-    event_timestamp TIMESTAMP COMMENT '거래 발생 시각',
-    amount          DOUBLE    COMMENT '거래 금액 (INR)',
+    alert_id        STRING    COMMENT 'UUID alert identifier',
+    transaction_id  STRING    COMMENT 'Original transaction ID',
+    account_id      STRING    COMMENT 'Account ID',
+    event_timestamp TIMESTAMP COMMENT 'Transaction timestamp',
+    amount          DOUBLE    COMMENT 'Transaction amount (INR)',
     channel         STRING    COMMENT 'ONLINE | ATM | POS',
-    fraud_score     DOUBLE    COMMENT '사기 점수 (0.0 ~ 1.0)',
-    location_lat    DOUBLE    COMMENT '거래 위도',
-    location_lon    DOUBLE    COMMENT '거래 경도',
-    alerted_at      TIMESTAMP COMMENT '알림 생성 시각'
+    fraud_score     DOUBLE    COMMENT 'Fraud score (0.0 ~ 1.0)',
+    location_lat    DOUBLE    COMMENT 'Transaction latitude',
+    location_lon    DOUBLE    COMMENT 'Transaction longitude',
+    alerted_at      TIMESTAMP COMMENT 'Alert creation timestamp'
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', fraud_reason STRING COMMENT 'HIGH_AMOUNT | VELOCITY | GEO_ANOMALY')
 STORED BY ICEBERG
@@ -121,18 +121,18 @@ TBLPROPERTIES (
 
 
 -- ---------------------------------------------------------------------------
--- Fraud Summary 테이블 (시간대/채널별 집계)
+-- Fraud Summary table (aggregated by hour and channel)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sbi_curated.fraud_summary (
-    hour            INT       COMMENT '시각 (0~23)',
+    hour            INT       COMMENT 'Hour of day (0-23)',
     channel         STRING    COMMENT 'ONLINE | ATM | POS',
-    total_txn       BIGINT    COMMENT '총 거래 건수',
-    fraud_txn       BIGINT    COMMENT '사기 거래 건수',
-    fraud_amount    DOUBLE    COMMENT '사기 거래 총액 (INR)',
-    fraud_rate      DOUBLE    COMMENT '사기 비율 (%)',
-    summarized_at   TIMESTAMP COMMENT '집계 시각'
+    total_txn       BIGINT    COMMENT 'Total transaction count',
+    fraud_txn       BIGINT    COMMENT 'Fraud transaction count',
+    fraud_amount    DOUBLE    COMMENT 'Total fraud amount (INR)',
+    fraud_rate      DOUBLE    COMMENT 'Fraud rate (%)',
+    summarized_at   TIMESTAMP COMMENT 'Aggregation timestamp'
 )
-PARTITIONED BY (dt STRING COMMENT '날짜 (YYYY-MM-DD)')
+PARTITIONED BY (dt STRING COMMENT 'Date (YYYY-MM-DD)')
 STORED BY ICEBERG
 LOCATION 'ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}/sbi-curated/fraud_summary'
 TBLPROPERTIES (
@@ -142,7 +142,7 @@ TBLPROPERTIES (
 
 
 -- =============================================================================
--- 확인 쿼리
+-- Verification queries
 -- =============================================================================
 SHOW DATABASES;
 SHOW TABLES IN sbi_raw;

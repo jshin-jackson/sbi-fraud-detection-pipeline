@@ -1,13 +1,13 @@
 """
-사기 탐지 룰 모듈
+Fraud detection rules module
 
-각 룰은 입력 DataFrame에 'fraud_flag_<rule>' 컬럼을 추가하고,
-최종적으로 is_fraud, fraud_reasons, fraud_score 컬럼을 반환합니다.
+Each rule adds a 'fraud_flag_<rule>' column to the input DataFrame.
+The final output includes is_fraud, fraud_reasons, and fraud_score columns.
 
-룰 목록:
-    1. HIGH_AMOUNT   — 단일 거래 금액 > 500,000 INR
-    2. VELOCITY      — 동일 계좌 5분 내 3건 이상
-    3. GEO_ANOMALY   — 이전 거래 대비 500 km 초과 이동 / 30분 이내
+Rules:
+    1. HIGH_AMOUNT   — single transaction amount > 500,000 INR
+    2. VELOCITY      — 3 or more transactions from the same account within 5 minutes
+    3. GEO_ANOMALY   — movement of more than 500 km from the previous transaction within 30 minutes
 """
 
 from pyspark.sql import DataFrame
@@ -17,13 +17,13 @@ from pyspark.sql.types import DoubleType
 
 
 # ---------------------------------------------------------------------------
-# 상수
+# Constants
 # ---------------------------------------------------------------------------
 HIGH_AMOUNT_THRESHOLD_INR = 500_000.0
-VELOCITY_WINDOW_SECONDS   = 300        # 5분
+VELOCITY_WINDOW_SECONDS   = 300        # 5 minutes
 VELOCITY_MAX_TRANSACTIONS = 3
 GEO_DISTANCE_KM           = 500.0
-GEO_TIME_WINDOW_SECONDS   = 1800       # 30분
+GEO_TIME_WINDOW_SECONDS   = 1800       # 30 minutes
 EARTH_RADIUS_KM           = 6371.0
 
 FRAUD_REASON_HIGH_AMOUNT  = "HIGH_AMOUNT"
@@ -32,12 +32,12 @@ FRAUD_REASON_GEO_ANOMALY  = "GEO_ANOMALY"
 
 
 # ---------------------------------------------------------------------------
-# 룰 1: 고액 거래
+# Rule 1: High-amount transaction
 # ---------------------------------------------------------------------------
 
 def apply_high_amount_rule(df: DataFrame) -> DataFrame:
     """
-    amount > HIGH_AMOUNT_THRESHOLD_INR 이면 HIGH_AMOUNT 플래그를 설정합니다.
+    Sets the HIGH_AMOUNT flag when amount > HIGH_AMOUNT_THRESHOLD_INR.
     """
     return df.withColumn(
         "fraud_flag_high_amount",
@@ -49,17 +49,18 @@ def apply_high_amount_rule(df: DataFrame) -> DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 룰 2: 단시간 다중 거래 (Velocity)
+# Rule 2: High-frequency transactions (Velocity)
 # ---------------------------------------------------------------------------
 
 def apply_velocity_rule(df: DataFrame) -> DataFrame:
     """
-    동일 account_id의 5분(300초) 이내 누적 거래 수가
-    VELOCITY_MAX_TRANSACTIONS 이상이면 VELOCITY 플래그를 설정합니다.
+    Sets the VELOCITY flag when the cumulative transaction count within
+    5 minutes (300 seconds) for the same account_id reaches
+    VELOCITY_MAX_TRANSACTIONS or more.
 
-    Window: account_id 기준, event_timestamp 기준 rangeBetween
+    Window: rangeBetween ordered by event_timestamp, partitioned by account_id
     """
-    # TIMESTAMP_NTZ → epoch seconds 변환 후 정렬 (Spark 3.5 호환)
+    # Convert TIMESTAMP_NTZ to epoch seconds for ordering (Spark 3.5 compatible)
     df = df.withColumn(
         "_event_ts_epoch",
         F.unix_timestamp(F.col("event_timestamp").cast("timestamp"))
@@ -87,12 +88,12 @@ def apply_velocity_rule(df: DataFrame) -> DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 룰 3: 지리적 이상 탐지 (GEO_ANOMALY)
+# Rule 3: Geographic anomaly detection (GEO_ANOMALY)
 # ---------------------------------------------------------------------------
 
 def _haversine_udf():
     """
-    두 위경도 사이의 Haversine 거리(km)를 계산하는 Spark UDF를 반환합니다.
+    Returns a Spark UDF that computes the Haversine distance (km) between two lat/lon pairs.
     """
     import math
 
@@ -112,10 +113,11 @@ def _haversine_udf():
 
 def apply_geo_anomaly_rule(df: DataFrame) -> DataFrame:
     """
-    직전 거래와의 이동 거리가 GEO_DISTANCE_KM km 초과이고
-    시간 차이가 GEO_TIME_WINDOW_SECONDS 이내이면 GEO_ANOMALY 플래그를 설정합니다.
+    Sets the GEO_ANOMALY flag when the distance from the previous transaction
+    exceeds GEO_DISTANCE_KM km and the time difference is within
+    GEO_TIME_WINDOW_SECONDS seconds.
 
-    Window: account_id 기준 시간순 정렬, lag로 이전 거래 위치 참조
+    Window: ordered by event_timestamp, partitioned by account_id; uses lag to reference previous location
     """
     window_spec = (
         Window
@@ -162,18 +164,18 @@ def apply_geo_anomaly_rule(df: DataFrame) -> DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 최종 집계: is_fraud, fraud_reasons, fraud_score
+# Final aggregation: is_fraud, fraud_reasons, fraud_score
 # ---------------------------------------------------------------------------
 
 def aggregate_fraud_flags(df: DataFrame) -> DataFrame:
     """
-    개별 룰 플래그를 종합하여 is_fraud, fraud_reasons, fraud_score 컬럼을 생성합니다.
+    Aggregates individual rule flags into is_fraud, fraud_reasons, and fraud_score columns.
 
-    fraud_score 산출 기준:
+    fraud_score calculation:
         HIGH_AMOUNT  → +0.5
         VELOCITY     → +0.4
         GEO_ANOMALY  → +0.6
-    (최대 1.0으로 클리핑)
+    (clipped to a maximum of 1.0)
     """
     df = df.withColumn(
         "fraud_reasons",
@@ -204,15 +206,15 @@ def aggregate_fraud_flags(df: DataFrame) -> DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 메인 진입점: 전체 룰 적용
+# Main entry point: apply all rules
 # ---------------------------------------------------------------------------
 
 def apply_all_rules(df: DataFrame) -> DataFrame:
     """
-    DataFrame에 모든 사기 탐지 룰을 순서대로 적용하고
-    최종 is_fraud, fraud_reasons, fraud_score 컬럼이 추가된 DataFrame을 반환합니다.
+    Applies all fraud detection rules to the DataFrame in sequence and returns
+    a DataFrame with is_fraud, fraud_reasons, and fraud_score columns added.
 
-    입력 컬럼 요구사항:
+    Required input columns:
         transaction_id, account_id, event_timestamp (TimestampType),
         amount, location_lat, location_lon
     """

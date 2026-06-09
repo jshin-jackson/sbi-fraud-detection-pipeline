@@ -1,7 +1,7 @@
 """
-SDV(Synthetic Data Vault)를 사용하여 SBI 은행 합성 거래 데이터를 생성합니다.
+Generates synthetic SBI bank transaction data using SDV (Synthetic Data Vault).
 
-사용법:
+Usage:
     python generate_transactions.py --rows 10000 --output transactions.csv
     python generate_transactions.py --rows 5000 --output transactions.json --format json
 """
@@ -23,7 +23,7 @@ MERCHANT_CATS = [
     "PHARMACY", "JEWELLERY", "TRANSFER", "ATM_WITHDRAWAL", "ECOMMERCE"
 ]
 
-# 인도 주요 도시 위경도 (사기 위치 이상 탐지 시나리오용)
+# Major Indian city coordinates (used for geographic anomaly detection scenarios)
 CITY_COORDS = [
     (28.6139, 77.2090),   # New Delhi
     (19.0760, 72.8777),   # Mumbai
@@ -37,7 +37,7 @@ CITY_COORDS = [
 
 
 def build_seed_dataframe(n: int = 2000) -> pd.DataFrame:
-    """SDV 학습용 시드 데이터프레임을 생성합니다."""
+    """Builds a seed DataFrame for SDV training."""
     random.seed(42)
     np.random.seed(42)
 
@@ -45,7 +45,7 @@ def build_seed_dataframe(n: int = 2000) -> pd.DataFrame:
     records = []
 
     for _ in range(n):
-        is_fraud = random.random() < 0.05  # 5% 사기 비율
+        is_fraud = random.random() < 0.05  # 5% fraud rate
         city = random.choice(CITY_COORDS)
         lat_jitter = np.random.uniform(-0.5, 0.5)
         lon_jitter = np.random.uniform(-0.5, 0.5)
@@ -74,11 +74,11 @@ def build_seed_dataframe(n: int = 2000) -> pd.DataFrame:
 
 
 def train_synthesizer(seed_df: pd.DataFrame) -> GaussianCopulaSynthesizer:
-    """SDV GaussianCopula 합성기를 학습합니다."""
+    """Trains an SDV GaussianCopula synthesizer."""
     metadata = SingleTableMetadata()
     metadata.detect_from_dataframe(seed_df)
 
-    # 타입 수동 보정
+    # Manual type corrections
     metadata.update_column("account_id", sdtype="id")
     metadata.update_column("merchant_id", sdtype="id")
     metadata.update_column("timestamp", sdtype="datetime", datetime_format="%Y-%m-%dT%H:%M:%S")
@@ -92,7 +92,7 @@ def train_synthesizer(seed_df: pd.DataFrame) -> GaussianCopulaSynthesizer:
 
 
 def add_transaction_ids(df: pd.DataFrame) -> pd.DataFrame:
-    """transaction_id(UUID) 컬럼을 추가합니다."""
+    """Adds a transaction_id (UUID) column."""
     df = df.copy()
     df.insert(0, "transaction_id", [str(uuid.uuid4()) for _ in range(len(df))])
     return df
@@ -100,19 +100,19 @@ def add_transaction_ids(df: pd.DataFrame) -> pd.DataFrame:
 
 def inject_fraud_patterns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    데모 시나리오용 명시적 사기 패턴을 주입합니다.
-    - HIGH_AMOUNT: 500,000 INR 초과 거래
-    - VELOCITY:    동일 계좌 5분 내 연속 거래
-    - GEO_ANOMALY: 물리적으로 불가능한 위치 이동
+    Injects explicit fraud patterns for demo scenarios.
+    - HIGH_AMOUNT: transactions exceeding 500,000 INR
+    - VELOCITY:    consecutive transactions from the same account within 5 minutes
+    - GEO_ANOMALY: physically impossible location movement
     """
     df = df.copy()
 
-    # HIGH_AMOUNT 사기 5건
+    # 5 HIGH_AMOUNT fraud transactions
     idx_high = df.sample(5, random_state=1).index
     df.loc[idx_high, "amount"] = [600000, 750000, 1200000, 900000, 2000000]
     df.loc[idx_high, "is_fraud"] = True
 
-    # VELOCITY 사기: 동일 계좌에 60초 간격 거래 3건
+    # VELOCITY fraud: 3 transactions from the same account at 60-second intervals
     velocity_account = "ACC_FRAUD_VEL"
     base_ts = datetime(2024, 6, 15, 14, 0, 0)
     velocity_rows = []
@@ -132,7 +132,7 @@ def inject_fraud_patterns(df: pd.DataFrame) -> pd.DataFrame:
     velocity_df = pd.DataFrame(velocity_rows)
     df = pd.concat([df, velocity_df], ignore_index=True)
 
-    # GEO_ANOMALY 사기: 10분 간격 Delhi → Mumbai (1400 km)
+    # GEO_ANOMALY fraud: Delhi → Mumbai (1400 km) in 10 minutes
     geo_account = "ACC_FRAUD_GEO"
     geo_rows = [
         {
@@ -165,19 +165,19 @@ def inject_fraud_patterns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def generate(n_rows: int, output_path: str, fmt: str = "csv") -> None:
-    print(f"[1/3] 시드 데이터 생성 중...")
+    print(f"[1/3] Generating seed data...")
     seed_df = build_seed_dataframe(2000)
 
-    print(f"[2/3] SDV 합성기 학습 중...")
+    print(f"[2/3] Training SDV synthesizer...")
     synthesizer = train_synthesizer(seed_df)
 
-    print(f"[3/3] {n_rows}건 합성 데이터 생성 중...")
+    print(f"[3/3] Generating {n_rows} synthetic records...")
     synthetic_df = synthesizer.sample(num_rows=n_rows)
     synthetic_df = add_transaction_ids(synthetic_df)
     synthetic_df = inject_fraud_patterns(synthetic_df)
 
     fraud_count = synthetic_df["is_fraud"].sum()
-    print(f"    총 {len(synthetic_df)}건 생성 완료 (사기: {fraud_count}건, "
+    print(f"    Total {len(synthetic_df)} records generated (fraud: {fraud_count}, "
           f"{100 * fraud_count / len(synthetic_df):.1f}%)")
 
     if fmt == "json":
@@ -187,13 +187,13 @@ def generate(n_rows: int, output_path: str, fmt: str = "csv") -> None:
     else:
         synthetic_df.to_csv(output_path, index=False)
 
-    print(f"저장 완료: {output_path}")
+    print(f"Saved: {output_path}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SDV 합성 거래 데이터 생성기")
-    parser.add_argument("--rows", type=int, default=10000, help="생성할 거래 건수 (기본: 10000)")
-    parser.add_argument("--output", type=str, default="transactions.csv", help="출력 파일 경로")
+    parser = argparse.ArgumentParser(description="SDV synthetic transaction data generator")
+    parser.add_argument("--rows", type=int, default=10000, help="Number of transactions to generate (default: 10000)")
+    parser.add_argument("--output", type=str, default="transactions.csv", help="Output file path")
     parser.add_argument("--format", dest="fmt", choices=["csv", "json"], default="csv")
     args = parser.parse_args()
 

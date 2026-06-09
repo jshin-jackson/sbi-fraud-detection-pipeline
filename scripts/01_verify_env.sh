@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # ================================================================
-# 01_verify_env.sh — 전체 환경 자동 검증 스크립트
-# Phase 1에서 실행합니다. 모든 항목이 OK여야 다음 Phase로 진행합니다.
+# 01_verify_env.sh — Full environment verification script
+# Run during Phase 1. All checks must pass before proceeding to the next Phase.
 # ================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-# config 로드
+# Load config
 if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
-  echo "[ERROR] config/env.conf 파일이 없습니다."
-  echo "        다음 명령으로 설정 파일을 연결하세요:"
+  echo "[ERROR] config/env.conf not found."
+  echo "        Link a configuration file with:"
   echo "        ln -sf config/env.internal.conf config/env.conf"
   exit 1
 fi
@@ -26,53 +26,53 @@ section() { echo ""; echo "=== $1 ==="; }
 
 echo ""
 echo "================================================================"
-echo " SBI Fraud Detection — 환경 검증 (ENV: ${ENV_NAME})"
+echo " SBI Fraud Detection — Environment Verification (ENV: ${ENV_NAME})"
 echo "================================================================"
 
 # ------------------------------------------------------------------
-section "1. 설정 파일 확인"
+section "1. Configuration file check"
 # ------------------------------------------------------------------
-[ -n "${KAFKA_BROKERS}" ]        && ok "KAFKA_BROKERS 설정됨"       || fail "KAFKA_BROKERS 미설정"
-[ -n "${HMS_HOST}" ]             && ok "HMS_HOST: ${HMS_HOST}"       || fail "HMS_HOST 미설정"
-[ -n "${HS2_HOST}" ]             && ok "HS2_HOST: ${HS2_HOST}"       || fail "HS2_HOST 미설정"
-[ -n "${OZONE_OM_SERVICE_ID}" ]  && ok "OZONE_OM_SERVICE_ID 설정됨"  || fail "OZONE_OM_SERVICE_ID 미설정"
-[ -n "${PRINCIPAL}" ]            && ok "PRINCIPAL: ${PRINCIPAL}"     || fail "PRINCIPAL 미설정"
+[ -n "${KAFKA_BROKERS}" ]        && ok "KAFKA_BROKERS is set"              || fail "KAFKA_BROKERS not set"
+[ -n "${HMS_HOST}" ]             && ok "HMS_HOST: ${HMS_HOST}"             || fail "HMS_HOST not set"
+[ -n "${HS2_HOST}" ]             && ok "HS2_HOST: ${HS2_HOST}"             || fail "HS2_HOST not set"
+[ -n "${OZONE_OM_SERVICE_ID}" ]  && ok "OZONE_OM_SERVICE_ID is set"        || fail "OZONE_OM_SERVICE_ID not set"
+[ -n "${PRINCIPAL}" ]            && ok "PRINCIPAL: ${PRINCIPAL}"           || fail "PRINCIPAL not set"
 
 # ------------------------------------------------------------------
-section "2. Kerberos 인증"
+section "2. Kerberos authentication"
 # ------------------------------------------------------------------
 if [ ! -f "${KEYTAB}" ]; then
-  fail "Keytab 파일 없음: ${KEYTAB}"
+  fail "Keytab file not found: ${KEYTAB}"
 else
-  ok "Keytab 파일 존재: ${KEYTAB}"
+  ok "Keytab file exists: ${KEYTAB}"
   if kinit -kt "${KEYTAB}" "${PRINCIPAL}" 2>/dev/null; then
-    ok "kinit 성공 (${PRINCIPAL})"
-    klist 2>/dev/null | grep -q "Ticket cache" && ok "TGT 발급 확인" || fail "TGT 확인 실패"
+    ok "kinit succeeded (${PRINCIPAL})"
+    klist 2>/dev/null | grep -q "Ticket cache" && ok "TGT issued successfully" || fail "TGT verification failed"
   else
-    fail "kinit 실패 — keytab 또는 principal 확인 필요"
+    fail "kinit failed — check keytab or principal"
   fi
 fi
 
 # ------------------------------------------------------------------
-section "3. Auto-TLS 인증서 파일 확인"
+section "3. Auto-TLS certificate file check"
 # ------------------------------------------------------------------
 for cert_var in TRUSTSTORE_JKS CA_PEM; do
   cert_path="${!cert_var}"
   if [ -f "${cert_path}" ]; then
     ok "${cert_var}: ${cert_path}"
   else
-    fail "${cert_var} 파일 없음: ${cert_path}"
+    fail "${cert_var} file not found: ${cert_path}"
   fi
 done
 
 if [ -z "${TRUSTSTORE_PW}" ]; then
-  fail "TRUSTSTORE_PW 미설정 — config/env.conf에 TRUSTSTORE_PW 값을 입력하세요"
+  fail "TRUSTSTORE_PW not set — enter the TRUSTSTORE_PW value in config/env.conf"
 else
-  ok "TRUSTSTORE_PW 설정 확인"
+  ok "TRUSTSTORE_PW is set"
 fi
 
 # ------------------------------------------------------------------
-section "4. Kafka 연결 테스트 (SASL_SSL + GSSAPI)"
+section "4. Kafka connection test (SASL_SSL + GSSAPI)"
 # ------------------------------------------------------------------
 KAFKA_TOPICS_CMD="${KAFKA_HOME:-/opt/cloudera/parcels/CDH/lib/kafka}/bin/kafka-topics.sh"
 
@@ -107,82 +107,82 @@ if "${KAFKA_TOPICS_CMD}" \
     --bootstrap-server "${KAFKA_BROKERS}" \
     --command-config "${KAFKA_CLIENT_CONF}" \
     --list &>/dev/null; then
-  ok "Kafka 연결 성공 (${KAFKA_BROKERS})"
-  # 토픽 존재 여부 확인
+  ok "Kafka connection successful (${KAFKA_BROKERS})"
+  # Check topic existence
   "${KAFKA_TOPICS_CMD}" \
     --bootstrap-server "${KAFKA_BROKERS}" \
     --command-config "${KAFKA_CLIENT_CONF}" \
     --list 2>/dev/null | grep -q "^${KAFKA_TOPIC}$" \
-    && ok "토픽 존재: ${KAFKA_TOPIC}" \
-    || fail "토픽 없음: ${KAFKA_TOPIC} (infra/01_kafka_setup.sh 실행 필요)"
+    && ok "Topic exists: ${KAFKA_TOPIC}" \
+    || fail "Topic not found: ${KAFKA_TOPIC} (run infra/01_kafka_setup.sh)"
 else
-  fail "Kafka 연결 실패 — 브로커 주소 또는 TRUSTSTORE_PW 확인 필요"
+  fail "Kafka connection failed — check broker address or TRUSTSTORE_PW"
 fi
 
 # ------------------------------------------------------------------
-section "5. Hive Metastore (HMS) 연결 테스트"
+section "5. Hive Metastore (HMS) connection test"
 # ------------------------------------------------------------------
 if beeline -u "${HS2_JDBC_URL}" \
     -e "SHOW DATABASES" \
     --silent=true 2>/dev/null | grep -q "sbi_raw\|sbi_curated\|default"; then
-  ok "HiveServer2 연결 성공 (${HS2_HOST}:${HS2_PORT})"
+  ok "HiveServer2 connection successful (${HS2_HOST}:${HS2_PORT})"
   beeline -u "${HS2_JDBC_URL}" \
     -e "SHOW DATABASES" \
     --silent=true 2>/dev/null | grep -q "sbi_raw" \
-    && ok "데이터베이스 존재: sbi_raw" \
-    || fail "데이터베이스 없음: sbi_raw (infra/03_iceberg_ddl.sql 실행 필요)"
+    && ok "Database exists: sbi_raw" \
+    || fail "Database not found: sbi_raw (run infra/03_iceberg_ddl.sql)"
 else
-  fail "HiveServer2 연결 실패 (${HS2_HOST}:${HS2_PORT}) — Kerberos 및 SSL 설정 확인"
+  fail "HiveServer2 connection failed (${HS2_HOST}:${HS2_PORT}) — check Kerberos and SSL configuration"
 fi
 
 # ------------------------------------------------------------------
-section "6. Ozone (OFS) 접근 테스트"
+section "6. Ozone (OFS) access test"
 # ------------------------------------------------------------------
 if ozone sh bucket list "/${OZONE_VOLUME}" &>/dev/null; then
-  ok "Ozone 볼륨 접근 성공: /${OZONE_VOLUME}"
+  ok "Ozone volume access successful: /${OZONE_VOLUME}"
   ozone sh bucket list "/${OZONE_VOLUME}" 2>/dev/null | grep -q "${OZONE_BUCKET_RAW}" \
-    && ok "버킷 존재: /${OZONE_VOLUME}/${OZONE_BUCKET_RAW}" \
-    || fail "버킷 없음: /${OZONE_VOLUME}/${OZONE_BUCKET_RAW} (infra/02_ozone_setup.sh 실행 필요)"
+    && ok "Bucket exists: /${OZONE_VOLUME}/${OZONE_BUCKET_RAW}" \
+    || fail "Bucket not found: /${OZONE_VOLUME}/${OZONE_BUCKET_RAW} (run infra/02_ozone_setup.sh)"
   ozone sh bucket list "/${OZONE_VOLUME}" 2>/dev/null | grep -q "${OZONE_BUCKET_CURATED}" \
-    && ok "버킷 존재: /${OZONE_VOLUME}/${OZONE_BUCKET_CURATED}" \
-    || fail "버킷 없음: /${OZONE_VOLUME}/${OZONE_BUCKET_CURATED} (infra/02_ozone_setup.sh 실행 필요)"
+    && ok "Bucket exists: /${OZONE_VOLUME}/${OZONE_BUCKET_CURATED}" \
+    || fail "Bucket not found: /${OZONE_VOLUME}/${OZONE_BUCKET_CURATED} (run infra/02_ozone_setup.sh)"
 else
-  fail "Ozone 볼륨 접근 실패: /${OZONE_VOLUME} — Ozone ACL 또는 Kerberos 확인"
+  fail "Ozone volume access failed: /${OZONE_VOLUME} — check Ozone ACL or Kerberos"
 fi
 
 # ------------------------------------------------------------------
-section "7. Spark 환경 확인"
+section "7. Spark environment check"
 # ------------------------------------------------------------------
 for jar_var in ICEBERG_JAR KAFKA_SPARK_JAR KAFKA_CLIENTS_JAR; do
   jar_path="${!jar_var}"
   if [ -f "${jar_path}" ]; then
-    ok "${jar_var} 존재"
+    ok "${jar_var} exists"
   else
-    fail "${jar_var} 없음: ${jar_path}"
+    fail "${jar_var} not found: ${jar_path}"
   fi
 done
 
 for ozone_jar in ${SPARK_OZONE_JARS//:/ }; do
-  [ -f "${ozone_jar}" ] && ok "Ozone JAR 존재: $(basename "${ozone_jar}")" \
-    || fail "Ozone JAR 없음: ${ozone_jar}"
+  [ -f "${ozone_jar}" ] && ok "Ozone JAR exists: $(basename "${ozone_jar}")" \
+    || fail "Ozone JAR not found: ${ozone_jar}"
 done
 
-[ -d "${HADOOP_CONF_DIR}" ] && ok "HADOOP_CONF_DIR 존재: ${HADOOP_CONF_DIR}" \
-  || fail "HADOOP_CONF_DIR 없음: ${HADOOP_CONF_DIR}"
+[ -d "${HADOOP_CONF_DIR}" ] && ok "HADOOP_CONF_DIR exists: ${HADOOP_CONF_DIR}" \
+  || fail "HADOOP_CONF_DIR not found: ${HADOOP_CONF_DIR}"
 
 # ------------------------------------------------------------------
 echo ""
 echo "================================================================"
-echo " 결과: ${PASS}개 성공 / ${FAIL}개 실패"
+echo " Result: ${PASS} passed / ${FAIL} failed"
 echo "================================================================"
 
 if [ "${FAIL}" -gt 0 ]; then
   echo ""
-  echo "[주의] FAIL 항목을 먼저 해결한 후 다음 Phase를 진행하세요."
-  echo "       문제 해결: README.md > 트러블슈팅 참고"
+  echo "[WARNING] Resolve all FAIL items before proceeding to the next Phase."
+  echo "          Troubleshooting: see README.md > Troubleshooting Guide"
   exit 1
 else
   echo ""
-  echo "[완료] 모든 환경 검증 통과! Phase 2를 시작하세요."
+  echo "[DONE] All environment checks passed! Proceed to Phase 2."
   exit 0
 fi

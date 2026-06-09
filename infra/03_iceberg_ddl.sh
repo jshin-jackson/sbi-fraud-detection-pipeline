@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Iceberg 테이블 DDL 실행 래퍼
-# 03_iceberg_ddl.sql 의 환경변수를 치환한 후 beeline으로 실행합니다.
+# Iceberg table DDL execution wrapper
+# Substitutes environment variables in 03_iceberg_ddl.sql, then runs it via beeline.
 #
-# 사용법:
-#   source config/env.conf   # 최초 1회 또는 환경 전환 시
+# Usage:
+#   source config/env.conf   # once initially or when switching environments
 #   bash infra/03_iceberg_ddl.sh
 # =============================================================================
 
@@ -13,9 +13,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-# config 로드
+# Load config
 if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
-  echo "[ERROR] config/env.conf 파일이 없습니다."
+  echo "[ERROR] config/env.conf not found."
   echo "        ln -sf config/env.internal.conf config/env.conf"
   exit 1
 fi
@@ -29,7 +29,7 @@ echo " OFS Base: ${OFS_BASE}"
 echo "================================================================"
 echo ""
 
-# SQL 템플릿에서 환경변수 치환 후 임시 파일 생성
+# Substitute environment variables in the SQL template and write to a temp file
 SQL_TMP=$(mktemp --suffix=.sql)
 trap "rm -f ${SQL_TMP}" EXIT
 

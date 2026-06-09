@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ================================================================
-# 05_cleanup.sh — 전체 인프라 및 데이터 완전 초기화
+# 05_cleanup.sh — Full infrastructure and data reset
 #
-# ⚠️  주의: 이 스크립트는 Kafka 토픽, Ozone 버킷, Iceberg 테이블,
-#           오프셋 파일 등 모든 데이터를 삭제합니다.
-#           실행 전 반드시 확인하세요.
+# ⚠️  WARNING: This script deletes all data including Kafka topics,
+#              Ozone buckets, Iceberg tables, offset files, and more.
+#              Confirm carefully before running.
 #
-# 사용법:
+# Usage:
 #   source config/env.conf
 #   bash infra/05_cleanup.sh
 #
-# 재시작 시:
+# To restart after cleanup:
 #   bash infra/01_kafka_setup.sh
 #   bash infra/02_ozone_setup.sh
 #   beeline -u "${HS2_JDBC_URL}" -f infra/03_iceberg_ddl.sql
@@ -20,9 +20,9 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-# config 로드
+# Load config
 if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
-  echo "[ERROR] config/env.conf 파일이 없습니다."
+  echo "[ERROR] config/env.conf not found."
   echo "        ln -sf config/env.internal.conf config/env.conf"
   exit 1
 fi
@@ -38,34 +38,34 @@ skip()    { echo "  [SKIP] $1"; }
 
 echo ""
 echo "================================================================"
-echo " SBI Fraud Detection — 완전 초기화 (ENV: ${ENV_NAME})"
+echo " SBI Fraud Detection — Full Reset (ENV: ${ENV_NAME})"
 echo "================================================================"
 echo ""
-echo "  삭제 대상:"
-echo "    - Kafka 토픽: ${KAFKA_TOPIC}, ${KAFKA_TOPIC_DLQ}"
-echo "    - Ozone 버킷: /${OZONE_VOLUME}/sbi-raw, /${OZONE_VOLUME}/sbi-curated"
-echo "    - Iceberg DB: sbi_raw, sbi_curated"
-echo "    - 오프셋 파일: ${KAFKA_OFFSET_FILE}"
-echo "    - 로컬 임시 데이터: ${DATA_OUTPUT_DIR}"
+echo "  Items to delete:"
+echo "    - Kafka topics: ${KAFKA_TOPIC}, ${KAFKA_TOPIC_DLQ}"
+echo "    - Ozone buckets: /${OZONE_VOLUME}/sbi-raw, /${OZONE_VOLUME}/sbi-curated"
+echo "    - Iceberg databases: sbi_raw, sbi_curated"
+echo "    - Offset file: ${KAFKA_OFFSET_FILE}"
+echo "    - Local temporary data: ${DATA_OUTPUT_DIR}"
 echo ""
-read -r -p "계속하시겠습니까? (yes/no): " CONFIRM
+read -r -p "Do you want to continue? (yes/no): " CONFIRM
 if [ "${CONFIRM}" != "yes" ]; then
-  echo "취소되었습니다."
+  echo "Cancelled."
   exit 0
 fi
 
 # ------------------------------------------------------------------
-section "1. Kerberos 인증"
+section "1. Kerberos authentication"
 # ------------------------------------------------------------------
 if kinit -kt "${KEYTAB}" "${PRINCIPAL}" 2>/dev/null; then
-  ok "kinit 성공 (${PRINCIPAL})"
+  ok "kinit succeeded (${PRINCIPAL})"
 else
-  fail "kinit 실패 — keytab 확인 필요: ${KEYTAB}"
+  fail "kinit failed — check keytab: ${KEYTAB}"
   exit 1
 fi
 
 # ------------------------------------------------------------------
-section "2. Kafka 토픽 삭제"
+section "2. Delete Kafka topics"
 # ------------------------------------------------------------------
 KAFKA_TOPICS_CMD="${KAFKA_HOME:-/opt/cloudera/parcels/CDH/lib/kafka}/bin/kafka-topics.sh"
 
@@ -92,7 +92,7 @@ EOF
 export KAFKA_OPTS="-Djava.security.auth.login.config=${TMPDIR_CLEAN}/jaas.conf"
 
 for TOPIC in "${KAFKA_TOPIC}" "${KAFKA_TOPIC_DLQ}"; do
-  # 토픽 존재 여부 확인
+  # Check if topic exists
   if "${KAFKA_TOPICS_CMD}" \
       --bootstrap-server "${KAFKA_BROKERS}" \
       --command-config "${TMPDIR_CLEAN}/client.properties" \
@@ -101,17 +101,17 @@ for TOPIC in "${KAFKA_TOPIC}" "${KAFKA_TOPIC_DLQ}"; do
         --bootstrap-server "${KAFKA_BROKERS}" \
         --command-config "${TMPDIR_CLEAN}/client.properties" \
         --delete --topic "${TOPIC}" 2>/dev/null; then
-      ok "토픽 삭제 완료: ${TOPIC}"
+      ok "Topic deleted: ${TOPIC}"
     else
-      fail "토픽 삭제 실패: ${TOPIC}"
+      fail "Failed to delete topic: ${TOPIC}"
     fi
   else
-    skip "토픽 없음 (이미 삭제됨): ${TOPIC}"
+    skip "Topic not found (already deleted): ${TOPIC}"
   fi
 done
 
 # ------------------------------------------------------------------
-section "3. Iceberg 테이블 및 데이터베이스 삭제"
+section "3. Drop Iceberg tables and databases"
 # ------------------------------------------------------------------
 BEELINE_SQL="
 DROP TABLE IF EXISTS sbi_raw.transactions;
@@ -125,68 +125,68 @@ DROP DATABASE IF EXISTS sbi_curated;
 if beeline -u "${HS2_JDBC_URL}" \
     -e "${BEELINE_SQL}" \
     --silent=true 2>/dev/null; then
-  ok "Iceberg 테이블/DB 삭제 완료 (sbi_raw, sbi_curated)"
+  ok "Iceberg tables/databases dropped (sbi_raw, sbi_curated)"
 else
-  fail "Iceberg 테이블/DB 삭제 실패 — HiveServer2 연결 확인"
+  fail "Failed to drop Iceberg tables/databases — check HiveServer2 connection"
 fi
 
 # ------------------------------------------------------------------
-section "4. Ozone 데이터 및 버킷 삭제"
+section "4. Delete Ozone data and buckets"
 # ------------------------------------------------------------------
 OFS_PREFIX="ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}"
 
 for BUCKET in "${OZONE_BUCKET_RAW}" "${OZONE_BUCKET_CURATED}"; do
-  # 버킷 존재 여부 확인
+  # Check if bucket exists
   if ozone sh bucket info "/${OZONE_VOLUME}/${BUCKET}" &>/dev/null; then
-    # 버킷 내 데이터 삭제
+    # Delete bucket contents
     ozone fs -rm -r -skipTrash "${OFS_PREFIX}/${BUCKET}/" &>/dev/null || true
-    # 버킷 삭제
+    # Delete bucket
     if ozone sh bucket delete "/${OZONE_VOLUME}/${BUCKET}" 2>/dev/null; then
-      ok "Ozone 버킷 삭제 완료: /${OZONE_VOLUME}/${BUCKET}"
+      ok "Ozone bucket deleted: /${OZONE_VOLUME}/${BUCKET}"
     else
-      fail "Ozone 버킷 삭제 실패: /${OZONE_VOLUME}/${BUCKET}"
+      fail "Failed to delete Ozone bucket: /${OZONE_VOLUME}/${BUCKET}"
     fi
   else
-    skip "버킷 없음 (이미 삭제됨): /${OZONE_VOLUME}/${BUCKET}"
+    skip "Bucket not found (already deleted): /${OZONE_VOLUME}/${BUCKET}"
   fi
 done
 
 # ------------------------------------------------------------------
-section "5. 오프셋 파일 삭제"
+section "5. Delete offset file"
 # ------------------------------------------------------------------
 if [ -f "${KAFKA_OFFSET_FILE}" ]; then
   rm -f "${KAFKA_OFFSET_FILE}"
-  ok "오프셋 파일 삭제: ${KAFKA_OFFSET_FILE}"
+  ok "Offset file deleted: ${KAFKA_OFFSET_FILE}"
 else
-  skip "오프셋 파일 없음: ${KAFKA_OFFSET_FILE}"
+  skip "Offset file not found: ${KAFKA_OFFSET_FILE}"
 fi
 
 # ------------------------------------------------------------------
-section "6. 로컬 임시 데이터 삭제"
+section "6. Delete local temporary data"
 # ------------------------------------------------------------------
 if [ -d "${DATA_OUTPUT_DIR}" ]; then
   rm -rf "${DATA_OUTPUT_DIR}"
-  ok "로컬 데이터 삭제: ${DATA_OUTPUT_DIR}"
+  ok "Local data deleted: ${DATA_OUTPUT_DIR}"
 else
-  skip "로컬 데이터 없음: ${DATA_OUTPUT_DIR}"
+  skip "Local data not found: ${DATA_OUTPUT_DIR}"
 fi
 
-# Spark 임시 파일
-rm -f /tmp/sbi-kafka-ca.pem 2>/dev/null && ok "임시 PEM 파일 삭제" || true
+# Spark temporary files
+rm -f /tmp/sbi-kafka-ca.pem 2>/dev/null && ok "Temporary PEM file deleted" || true
 
 # ------------------------------------------------------------------
 echo ""
 echo "================================================================"
-echo " 결과: ${PASS}개 성공 / ${FAIL}개 실패"
+echo " Result: ${PASS} passed / ${FAIL} failed"
 echo "================================================================"
 
 if [ "${FAIL}" -gt 0 ]; then
   echo ""
-  echo "[주의] FAIL 항목을 확인하세요. 수동으로 삭제가 필요할 수 있습니다."
+  echo "[WARNING] Check the FAIL items. Manual cleanup may be required."
   exit 1
 else
   echo ""
-  echo "[완료] 초기화 완료! 아래 순서로 재시작하세요:"
+  echo "[DONE] Reset complete! Restart in the following order:"
   echo ""
   echo "  source config/env.conf"
   echo "  bash infra/01_kafka_setup.sh"

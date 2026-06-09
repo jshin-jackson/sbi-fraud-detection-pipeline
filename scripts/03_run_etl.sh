@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
 # ================================================================
-# 03_run_etl.sh — Raw Iceberg → Curated Iceberg Spark ETL 실행
+# 03_run_etl.sh — Raw Iceberg → Curated Iceberg Spark ETL runner
 #
-# 사용법:
+# Usage:
 #   scripts/03_run_etl.sh [YYYY-MM-DD]
-#   scripts/03_run_etl.sh 2024-01-07   # 특정 날짜 처리
-#   scripts/03_run_etl.sh               # 기본: 어제 날짜 자동 처리
+#   scripts/03_run_etl.sh 2024-01-07   # process a specific date
+#   scripts/03_run_etl.sh               # default: process yesterday
 # ================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-# config 로드
+# Load config
 if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
-  echo "[ERROR] config/env.conf 파일이 없습니다."
+  echo "[ERROR] config/env.conf not found."
   echo "        ln -sf config/env.internal.conf config/env.conf"
   exit 1
 fi
 source "${ROOT_DIR}/config/env.conf"
 
-# 처리 날짜 (인자 없으면 어제)
+# Processing date (defaults to yesterday if no argument provided)
 DT="${1:-$(date -d 'yesterday' '+%Y-%m-%d' 2>/dev/null || date -v-1d '+%Y-%m-%d')}"
 
 echo ""
@@ -28,12 +28,12 @@ echo "================================================================"
 echo " SBI Fraud ETL (ENV: ${ENV_NAME}) — dt=${DT}"
 echo "================================================================"
 
-# Kerberos 티켓 갱신
+# Refresh Kerberos ticket
 kinit -kt "${KEYTAB}" "${PRINCIPAL}"
 
 export SPARK_CLASSPATH="${SPARK_OZONE_JARS}"
 
-# spark-defaults.conf 의 ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} 를 실제 값으로 치환
+# Substitute ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} placeholders in spark-defaults.conf
 SPARK_CONF_TMP=$(mktemp --suffix=.conf)
 trap "rm -f ${SPARK_CONF_TMP}" EXIT
 envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_OM_ADDRESS} ${HMS_HOST} ${HMS_PORT} ${KRB_REALM} ${KEYTAB} ${PRINCIPAL}' \

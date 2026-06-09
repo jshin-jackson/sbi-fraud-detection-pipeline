@@ -12,7 +12,7 @@
       "name": "sbi-fd-kafka-admin",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "SBI Fraud Detection — systest: sbi-fd-transactions-* 토픽 전체 권한 (produce/consume/admin)",
+      "description": "SBI Fraud Detection — systest: full access on sbi-fd-transactions-* topics (produce/consume/admin)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
@@ -54,7 +54,7 @@
       "name": "sbi-fraud-demo-ozone-access",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "SBI Fraud Demo — systest: firstvolume 볼륨 및 하위 버킷/키 전체 권한",
+      "description": "SBI Fraud Demo — systest: full access on firstvolume and all sub-buckets/keys",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
@@ -92,7 +92,7 @@
       "name": "sbi-fraud-demo-hive-access",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "SBI Fraud Demo — systest: sbi_raw/sbi_curated 데이터베이스 전체 권한 (DDL/DML/select)",
+      "description": "SBI Fraud Demo — systest: full access on sbi_raw/sbi_curated databases (DDL/DML/select)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ================================================================
-# 04_run_report.sh — Hive/beeline 리포트 쿼리 실행 래퍼
-# Phase 5 Demo 검증 및 결과 확인에 사용합니다.
+# 04_run_report.sh — Hive/beeline report query runner
+# Used for Phase 5 demo verification and result review.
 # ================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-# config 로드
+# Load config
 if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
-  echo "[ERROR] config/env.conf 파일이 없습니다."
+  echo "[ERROR] config/env.conf not found."
   echo "        ln -sf config/env.internal.conf config/env.conf"
   exit 1
 fi

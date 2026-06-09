@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Kafka 토픽 생성 스크립트
-# 전제조건: Kerberos 티켓 발급 완료 (kinit), kafka-topics.sh PATH 설정
+# Kafka topic creation script
+# Prerequisites: Kerberos ticket issued (kinit), kafka-topics.sh in PATH
 #
-# 사용법:
+# Usage:
 #   chmod +x kafka_setup.sh
 #   kinit -kt /opt/cloudera/systest.keytab systest@ROOT.COMOPS.SITE
 #   bash infra/kafka_setup.sh
@@ -12,7 +12,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# 환경 설정
+# Configuration
 # ---------------------------------------------------------------------------
 KAFKA_HOME="${KAFKA_HOME:-/opt/cloudera/parcels/CDH/lib/kafka}"
 BOOTSTRAP="${BOOTSTRAP:-${KAFKA_BROKERS}}"
@@ -21,17 +21,17 @@ KEYTAB="${KEYTAB:-}"
 PRINCIPAL="${PRINCIPAL:-}"
 
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
-TRUSTSTORE_PASS="${TRUSTSTORE_PW:?TRUSTSTORE_PW 가 설정되지 않았습니다. source config/env.conf 를 먼저 실행하세요}"
+TRUSTSTORE_PASS="${TRUSTSTORE_PW:?TRUSTSTORE_PW is not set. Run 'source config/env.conf' first.}"
 
 TOPIC_RAW="sbi-fd-transactions-raw"
 TOPIC_DLQ="sbi-fd-transactions-dlq"   # Dead Letter Queue
 
 PARTITIONS=6
 REPLICATION=3
-RETENTION_MS=604800000   # 7일
+RETENTION_MS=604800000   # 7 days
 
 # ---------------------------------------------------------------------------
-# 색상 출력 헬퍼
+# Output helper functions
 # ---------------------------------------------------------------------------
 info()  { echo "[INFO]  $*"; }
 ok()    { echo "[OK]    $*"; }
@@ -39,14 +39,14 @@ warn()  { echo "[WARN]  $*"; }
 err()   { echo "[ERROR] $*" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
-# Kerberos 티켓 확인
+# Verify Kerberos ticket
 # ---------------------------------------------------------------------------
-info "Kerberos 티켓 확인..."
-klist -s || err "Kerberos 티켓이 없습니다. 먼저 'kinit -kt ${KEYTAB} ${PRINCIPAL}' 을 실행하세요."
-ok "Kerberos 티켓 유효"
+info "Checking Kerberos ticket..."
+klist -s || err "No Kerberos ticket found. Run 'kinit -kt ${KEYTAB} ${PRINCIPAL}' first."
+ok "Kerberos ticket is valid"
 
 # ---------------------------------------------------------------------------
-# CDP Auto-TLS truststore 자동 감지
+# Auto-detect CDP Auto-TLS truststore
 # ---------------------------------------------------------------------------
 CDP_TRUSTSTORE="${TRUSTSTORE_PATH:-}"
 CDP_TRUSTSTORE_PASS="${TRUSTSTORE_PASS:-}"
@@ -64,51 +64,51 @@ if [[ -z "${CDP_TRUSTSTORE}" ]]; then
 fi
 
 if [[ -z "${CDP_TRUSTSTORE}" ]]; then
-    err "Auto-TLS truststore를 찾을 수 없습니다.
-  TRUSTSTORE_PATH 환경변수로 직접 지정하세요:
+    err "Auto-TLS truststore not found.
+  Specify the path via the TRUSTSTORE_PATH environment variable:
   export TRUSTSTORE_PATH=/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks"
 fi
-ok "Truststore 발견: ${CDP_TRUSTSTORE}"
+ok "Truststore found: ${CDP_TRUSTSTORE}"
 
 # ---------------------------------------------------------------------------
-# Truststore 비밀번호 — 우선순위:
-#   1) TRUSTSTORE_PASS 환경변수
-#   2) <truststore>.pw 파일
-#   3) Kafka 프로세스 설정 파일 (CM이 관리하는 process dir)
+# Truststore password — resolution priority:
+#   1) TRUSTSTORE_PASS environment variable
+#   2) <truststore>.pw file
+#   3) Kafka process config file (CM-managed process dir)
 # ---------------------------------------------------------------------------
 if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
     PW_FILE="${CDP_TRUSTSTORE%.jks}.pw"
     if [[ -f "${PW_FILE}" ]]; then
         CDP_TRUSTSTORE_PASS="$(cat "${PW_FILE}")"
-        ok "Truststore 비밀번호 파일 사용: ${PW_FILE}"
+        ok "Using truststore password file: ${PW_FILE}"
     fi
 fi
 
 if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
-    # CM process dir에서 Kafka가 사용하는 truststore 비밀번호 탐색
+    # Search for the truststore password used by Kafka in the CM process dir
     KAFKA_PROC_PW=$(grep -r "ssl.truststore.password" \
         /var/run/cloudera-scm-agent/process/*/kafka*/kafka.properties \
         2>/dev/null | head -1 | awk -F'=' '{print $2}' | tr -d ' ')
     if [[ -n "${KAFKA_PROC_PW}" ]]; then
         CDP_TRUSTSTORE_PASS="${KAFKA_PROC_PW}"
-        ok "Kafka 프로세스 설정에서 truststore 비밀번호 취득"
+        ok "Retrieved truststore password from Kafka process configuration"
     fi
 fi
 
 if [[ -z "${CDP_TRUSTSTORE_PASS}" ]]; then
-    err "Truststore 비밀번호를 확인할 수 없습니다.
-  아래 명령으로 직접 확인 후 환경변수로 지정하세요:
+    err "Unable to determine truststore password.
+  Retrieve the password manually and set it as an environment variable:
 
     cat /var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.pw
     grep ssl.truststore.password /var/run/cloudera-scm-agent/process/*/kafka*/kafka.properties
 
-  확인한 비밀번호를 환경변수로 설정:
-    export TRUSTSTORE_PASS=<비밀번호>
+  Set the retrieved password:
+    export TRUSTSTORE_PASS=<password>
     bash infra/kafka_setup.sh"
 fi
 
 # ---------------------------------------------------------------------------
-# 임시 client.properties 생성 (스크립트 종료 시 자동 삭제)
+# Create temporary client.properties (auto-deleted on script exit)
 # ---------------------------------------------------------------------------
 TMPDIR_LOCAL=$(mktemp -d)
 trap 'rm -rf "${TMPDIR_LOCAL}"' EXIT
@@ -138,17 +138,17 @@ connections.max.idle.ms=540000
 EOF
 
 export KAFKA_OPTS="-Djava.security.auth.login.config=${JAAS_CONF}"
-ok "임시 client.properties 생성: ${CLIENT_PROPS}"
+ok "Temporary client.properties created: ${CLIENT_PROPS}"
 
 # ---------------------------------------------------------------------------
-# Kafka 명령 경로
+# Kafka command paths
 # ---------------------------------------------------------------------------
 KAFKA_TOPICS="${KAFKA_HOME}/bin/kafka-topics.sh"
 KAFKA_CONFIGS="${KAFKA_HOME}/bin/kafka-configs.sh"
 KAFKA_ACL="${KAFKA_HOME}/bin/kafka-acls.sh"
 
 # ---------------------------------------------------------------------------
-# 토픽 생성 함수 (--if-not-exists: 이미 존재해도 오류 없이 통과)
+# Topic creation function (--if-not-exists: no error if topic already exists)
 # ---------------------------------------------------------------------------
 create_topic() {
     local topic="$1"
@@ -165,22 +165,22 @@ create_topic() {
         --config "retention.ms=${RETENTION_MS}" \
         --config cleanup.policy=delete \
         --config compression.type=snappy \
-    && ok "토픽 생성 완료 (또는 이미 존재): ${topic}" \
-    || err "토픽 생성 실패: ${topic}"
+    && ok "Topic created (or already exists): ${topic}" \
+    || err "Topic creation failed: ${topic}"
 }
 
 # ---------------------------------------------------------------------------
-# 토픽 생성
+# Create topics
 # ---------------------------------------------------------------------------
-info "토픽 생성 시작..."
+info "Creating topics..."
 create_topic "${TOPIC_RAW}" 6
 create_topic "${TOPIC_DLQ}" 2
 
 # ---------------------------------------------------------------------------
-# Ranger를 사용하는 환경에서는 아래 kafka-acls 명령 대신
-# Ranger UI / REST API로 정책을 적용해야 합니다.
+# In environments using Ranger, apply policies via the Ranger UI / REST API
+# instead of the kafka-acls commands below.
 # ---------------------------------------------------------------------------
-info "ACL 설정 (Ranger 미사용 환경 전용 참고 명령):"
+info "ACL configuration (reference commands for non-Ranger environments only):"
 cat <<'ACL_EXAMPLE'
 # Producer ACL
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
@@ -197,12 +197,12 @@ kafka-acls.sh --bootstrap-server $BOOTSTRAP \
 ACL_EXAMPLE
 
 # ---------------------------------------------------------------------------
-# 토픽 최종 확인
+# Final topic listing
 # ---------------------------------------------------------------------------
-info "전체 토픽 목록:"
+info "All topics:"
 "${KAFKA_TOPICS}" \
     --bootstrap-server "${BOOTSTRAP}" \
     --command-config "${CLIENT_PROPS}" \
-    --list 2>/dev/null | grep "^sbi-" || warn "sbi- 접두사 토픽을 찾을 수 없습니다."
+    --list 2>/dev/null | grep "^sbi-" || warn "No topics with 'sbi-' prefix found."
 
-ok "Kafka 토픽 설정 완료"
+ok "Kafka topic setup complete"
