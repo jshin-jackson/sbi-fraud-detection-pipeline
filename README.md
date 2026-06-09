@@ -81,8 +81,9 @@ Step 9  결과 확인     bash scripts/run_report.sh  (또는 Hue SQL Editor)
 sbi-fraud-detection-pipeline/
 │
 ├── config/                             ← [가장 먼저 편집]
-│   ├── env.internal.conf               내부 테스트 환경 설정
-│   ├── env.customer.conf               SBI 고객 환경 설정 (CHANGE_ME → 실제 값으로 교체)
+│   ├── env.internal.conf               Cloudera 내부 테스트 환경 설정
+│   ├── env.uatdev.conf                 SBI UAT/DEV 환경 설정 (CHANGE_ME → 실제 값으로 교체)
+│   ├── env.prd.conf                    SBI Production 환경 설정 (CHANGE_ME → 실제 값으로 교체)
 │   └── env.conf → env.internal.conf    현재 활성 환경 (symlink, git 제외)
 │
 ├── scripts/
@@ -248,7 +249,8 @@ bash infra/02_ozone_setup.sh
 ### 2-3. Iceberg 테이블 생성
 
 ```bash
-beeline -u "${HS2_JDBC_URL}" -f infra/03_iceberg_ddl.sql
+envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
+  | beeline -u "${HS2_JDBC_URL}"
 ```
 
 생성되는 테이블:
@@ -439,27 +441,36 @@ GEO_ANOMALY   |      7   |    4,100,000
 
 ---
 
-## 환경 전환 (내부 테스트 → SBI 고객 환경)
+## 환경 전환
+
+| 파일 | 대상 환경 | 용도 |
+|------|-----------|------|
+| `config/env.internal.conf` | Cloudera 내부 테스트 | Demo 개발/검증 |
+| `config/env.uatdev.conf` | SBI UAT / DEV 클러스터 | 고객 테스트 환경 |
+| `config/env.prd.conf` | SBI Production 클러스터 | 실제 운영 환경 |
 
 ```bash
-# SBI 고객 환경으로 전환
-ln -sf config/env.customer.conf config/env.conf
+# UAT/DEV 환경으로 전환
+ln -sf config/env.uatdev.conf config/env.conf
+vi config/env.uatdev.conf   # CHANGE_ME 항목 입력
 
-# 고객 클러스터 정보 입력 (CHANGE_ME 항목들)
-vi config/env.customer.conf
+# Production 환경으로 전환
+ln -sf config/env.prd.conf config/env.conf
+vi config/env.prd.conf      # CHANGE_ME 항목 입력
 
-# 환경 검증 후 동일하게 실행
+# 내부 테스트 환경으로 복귀
+ln -sf config/env.internal.conf config/env.conf
+```
+
+환경 전환 후 공통 실행 순서:
+
+```bash
 source config/env.conf
 bash scripts/verify_env.sh
 bash infra/01_kafka_setup.sh
 bash infra/02_ozone_setup.sh
-beeline -u "${HS2_JDBC_URL}" -f infra/03_iceberg_ddl.sql
-```
-
-### 내부 환경으로 복귀
-
-```bash
-ln -sf config/env.internal.conf config/env.conf
+envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
+  | beeline -u "${HS2_JDBC_URL}"
 ```
 
 ---

@@ -33,12 +33,18 @@ kinit -kt "${KEYTAB}" "${PRINCIPAL}"
 
 export SPARK_CLASSPATH="${SPARK_OZONE_JARS}"
 
+# spark-defaults.conf 의 ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} 를 실제 값으로 치환
+SPARK_CONF_TMP=$(mktemp --suffix=.conf)
+trap "rm -f ${SPARK_CONF_TMP}" EXIT
+envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_OM_ADDRESS}' \
+  < "${ROOT_DIR}/conf/spark-defaults.conf" > "${SPARK_CONF_TMP}"
+
 spark-submit \
   --master yarn \
   --deploy-mode client \
   --principal "${PRINCIPAL}" \
   --keytab "${KEYTAB}" \
-  --properties-file "${ROOT_DIR}/conf/spark-defaults.conf" \
+  --properties-file "${SPARK_CONF_TMP}" \
   --py-files "${ROOT_DIR}/spark/etl/rules.py" \
   "${ROOT_DIR}/spark/etl/fraud_detection_etl.py" \
   --dt "${DT}"

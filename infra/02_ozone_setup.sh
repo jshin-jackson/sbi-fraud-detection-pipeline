@@ -19,8 +19,8 @@
 set -euo pipefail
 
 OZONE_CMD="${OZONE_CMD:-ozone}"
-# firstvolume: OFS(RootedOzoneFileSystem) 용 볼륨
-VOLUME="firstvolume"
+# firstvolume: OFS(RootedOzoneFileSystem) 용 볼륨 (env.conf 의 OZONE_VOLUME 우선)
+VOLUME="${OZONE_VOLUME:-firstvolume}"
 BUCKET_RAW="sbi-raw"
 BUCKET_CURATED="sbi-curated"
 
@@ -72,5 +72,5 @@ info "버킷 정보:"
 ok "Ozone 버킷 설정 완료"
 echo ""
 echo "OFS 경로:"
-echo "  Raw     : ofs://ozone1780551922/${VOLUME}/${BUCKET_RAW}/"
-echo "  Curated : ofs://ozone1780551922/${VOLUME}/${BUCKET_CURATED}/"
+echo "  Raw     : ofs://${OZONE_OM_SERVICE_ID}/${VOLUME}/${BUCKET_RAW}/"
+echo "  Curated : ofs://${OZONE_OM_SERVICE_ID}/${VOLUME}/${BUCKET_CURATED}/"

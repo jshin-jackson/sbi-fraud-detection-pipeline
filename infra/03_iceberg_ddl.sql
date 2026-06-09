@@ -3,15 +3,17 @@
 -- 스토리지: Apache Ozone (ofs://)
 -- 카탈로그: Hive Metastore (HMS)
 -- =============================================================================
--- 실행 방법:
---   beeline -u "jdbc:hive2://ccycloud-1.jshin.root.comops.site:10000/;principal=hive/_HOST@ROOT.COMOPS.SITE;ssl=true;sslTrustStore=/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks;trustStorePassword=zpXWTjeWPjvNDU4mQnDQPQKn50xfVI9HYX12DSc05x3" -f iceberg_ddl.sql
+-- 실행 방법 (envsubst 로 환경변수 치환 후 beeline에 파이프):
+--   source config/env.conf
+--   envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
+--     | beeline -u "${HS2_JDBC_URL}"
 -- =============================================================================
 
 
 -- ---------------------------------------------------------------------------
 -- 0. Ozone 버킷은 사전에 생성되어 있어야 합니다.
---    ozone sh bucket create /firstvolume/sbi-raw
---    ozone sh bucket create /firstvolume/sbi-curated
+--    ozone sh bucket create /${OZONE_VOLUME}/sbi-raw
+--    ozone sh bucket create /${OZONE_VOLUME}/sbi-curated
 -- ---------------------------------------------------------------------------
 
 
@@ -45,7 +47,7 @@ CREATE TABLE IF NOT EXISTS sbi_raw.transactions (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD 파티션')
 STORED BY ICEBERG
-LOCATION 'ofs://ozone1780551922/firstvolume/sbi-raw/transactions'
+LOCATION 'ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}/sbi-raw/transactions'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -83,7 +85,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.transactions (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', channel STRING COMMENT 'ONLINE|ATM|POS')
 STORED BY ICEBERG
-LOCATION 'ofs://ozone1780551922/firstvolume/sbi-curated/transactions'
+LOCATION 'ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}/sbi-curated/transactions'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -110,7 +112,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_alerts (
 )
 PARTITIONED BY (dt STRING COMMENT 'YYYY-MM-DD', fraud_reason STRING COMMENT 'HIGH_AMOUNT | VELOCITY | GEO_ANOMALY')
 STORED BY ICEBERG
-LOCATION 'ofs://ozone1780551922/firstvolume/sbi-curated/fraud_alerts'
+LOCATION 'ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}/sbi-curated/fraud_alerts'
 TBLPROPERTIES (
     'format-version'                    = '2',
     'write.format.default'              = 'parquet',
@@ -132,7 +134,7 @@ CREATE TABLE IF NOT EXISTS sbi_curated.fraud_summary (
 )
 PARTITIONED BY (dt STRING COMMENT '날짜 (YYYY-MM-DD)')
 STORED BY ICEBERG
-LOCATION 'ofs://ozone1780551922/firstvolume/sbi-curated/fraud_summary'
+LOCATION 'ofs://${OZONE_OM_SERVICE_ID}/${OZONE_VOLUME}/sbi-curated/fraud_summary'
 TBLPROPERTIES (
     'format-version'  = '2',
     'write.format.default' = 'parquet'

@@ -36,10 +36,16 @@ klist
 # Ozone filesystem JAR을 드라이버 JVM 시작 전에 클래스패스에 추가
 export SPARK_CLASSPATH="${SPARK_OZONE_JARS}"
 
+# spark-defaults.conf 의 ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} 를 실제 값으로 치환
+SPARK_CONF_TMP=$(mktemp --suffix=.conf)
+trap "rm -f ${SPARK_CONF_TMP}" EXIT
+envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_OM_ADDRESS}' \
+  < "${ROOT_DIR}/conf/spark-defaults.conf" > "${SPARK_CONF_TMP}"
+
 spark-submit \
   --master yarn \
   --deploy-mode client \
   --principal "${PRINCIPAL}" \
   --keytab "${KEYTAB}" \
-  --properties-file "${ROOT_DIR}/conf/spark-defaults.conf" \
+  --properties-file "${SPARK_CONF_TMP}" \
   "${ROOT_DIR}/spark/stream/raw_ingest_job.py"
