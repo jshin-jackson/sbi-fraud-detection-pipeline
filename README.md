@@ -64,7 +64,7 @@ Step 1  환경 설정     config/env.conf 편집 (호스트명 입력)
 Step 2  환경 검증     bash scripts/01_verify_env.sh
 Step 3  인프라 구성   bash infra/01_kafka_setup.sh
                       bash infra/02_ozone_setup.sh
-                      beeline -f infra/03_iceberg_ddl.sql
+                      bash infra/03_iceberg_ddl.sh
 Step 4  Ranger 정책   Ranger UI에서 정책 추가/수정
 Step 5  CM 설정       HMS hive-site.xml + Spark Safety Valve 설정
 Step 6  데이터 생성   python data_gen/generate_transactions.py --rows 10000 --output /tmp/txn.csv
@@ -109,7 +109,8 @@ sbi-fraud-detection-pipeline/
 ├── infra/
 │   ├── 01_kafka_setup.sh               Kafka 토픽 생성
 │   ├── 02_ozone_setup.sh               Ozone 볼륨/버킷 생성
-│   ├── 03_iceberg_ddl.sql              Iceberg 테이블 스키마
+│   ├── 03_iceberg_ddl.sql              Iceberg 테이블 스키마 (SQL 템플릿)
+│   ├── 03_iceberg_ddl.sh               Iceberg DDL 실행 래퍼 (envsubst + beeline)
 │   └── 04_ranger_policies.json         Ranger 보안 정책 템플릿
 │
 ├── conf/
@@ -251,8 +252,7 @@ bash infra/02_ozone_setup.sh
 ### 2-3. Iceberg 테이블 생성
 
 ```bash
-envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
-  | beeline -u "${HS2_JDBC_URL}"
+bash infra/03_iceberg_ddl.sh
 ```
 
 생성되는 테이블:
@@ -520,8 +520,7 @@ source config/env.conf
 bash scripts/01_verify_env.sh
 bash infra/01_kafka_setup.sh
 bash infra/02_ozone_setup.sh
-envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
-  | beeline -u "${HS2_JDBC_URL}"
+bash infra/03_iceberg_ddl.sh
 ```
 
 ---
