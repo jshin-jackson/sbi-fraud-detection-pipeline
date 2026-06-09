@@ -192,6 +192,6 @@ else
   echo "  bash infra/01_kafka_setup.sh"
   echo "  bash infra/02_ozone_setup.sh"
   echo "  beeline -u \"\${HS2_JDBC_URL}\" -f infra/03_iceberg_ddl.sql"
-  echo "  bash scripts/run_ingest.sh"
+  echo "  bash scripts/02_run_ingest.sh"
   exit 0
 fi

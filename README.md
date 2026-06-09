@@ -61,7 +61,7 @@ Python   : 3.9.x  ← RHEL 9.6 기본 내장, 추가 설치 불필요
 ```
 Step 0  Python 환경   venv 생성 + air-gapped 패키지 설치
 Step 1  환경 설정     config/env.conf 편집 (호스트명 입력)
-Step 2  환경 검증     bash scripts/verify_env.sh
+Step 2  환경 검증     bash scripts/01_verify_env.sh
 Step 3  인프라 구성   bash infra/01_kafka_setup.sh
                       bash infra/02_ozone_setup.sh
                       beeline -f infra/03_iceberg_ddl.sql
@@ -70,9 +70,9 @@ Step 5  CM 설정       HMS hive-site.xml + Spark Safety Valve 설정
 Step 6  데이터 생성   python data_gen/generate_transactions.py --rows 10000 --output /tmp/txn.csv
                       python data_gen/kafka_producer.py --input /tmp/txn.csv
                       (또는 즉석 생성: python data_gen/kafka_producer.py --rows 10000)
-Step 7  Spark Ingest  bash scripts/run_ingest.sh  (또는 cron 1분 주기)
-Step 8  Spark ETL     bash scripts/run_etl.sh
-Step 9  결과 확인     bash scripts/run_report.sh  (또는 Hue SQL Editor)
+Step 7  Spark Ingest  bash scripts/02_run_ingest.sh  (또는 cron 1분 주기)
+Step 8  Spark ETL     bash scripts/03_run_etl.sh
+Step 9  결과 확인     bash scripts/04_run_report.sh  (또는 Hue SQL Editor)
 ```
 
 ---
@@ -89,10 +89,10 @@ sbi-fraud-detection-pipeline/
 │   └── env.conf → env.internal.conf    현재 활성 환경 (symlink, git 제외)
 │
 ├── scripts/
-│   ├── verify_env.sh                   환경 자동 검증 (Phase 1)
-│   ├── run_ingest.sh                   Kafka → Raw Iceberg Spark 실행
-│   ├── run_etl.sh                      Raw → Curated Spark ETL 실행
-│   └── run_report.sh                   beeline 리포트 실행 래퍼
+│   ├── 01_verify_env.sh                환경 자동 검증 (Phase 1)
+│   ├── 02_run_ingest.sh                Kafka → Raw Iceberg Spark 실행
+│   ├── 03_run_etl.sh                   Raw → Curated Spark ETL 실행
+│   └── 04_run_report.sh                beeline 리포트 실행 래퍼
 │
 ├── data_gen/
 │   ├── generate_transactions.py        사기 패턴 포함 거래 데이터 생성 (SDV)
@@ -120,7 +120,7 @@ sbi-fraud-detection-pipeline/
 ├── report/
 │   └── fraud_report.sql                Demo 검증 쿼리 7개 (Hive/Impala 호환)
 │
-└── run_ingest.sh                       루트 래퍼 (cron 호환 — scripts/ 위임)
+└── run_ingest.sh                       루트 래퍼 (cron 호환 — scripts/02_run_ingest.sh 위임)
 ```
 
 ---
@@ -203,7 +203,7 @@ TRUSTSTORE_PW="실제-truststore-패스워드"    # ← 반드시 입력
 ```bash
 ln -sf config/env.internal.conf config/env.conf   # 최초 1회
 source config/env.conf
-bash scripts/verify_env.sh
+bash scripts/01_verify_env.sh
 ```
 
 모든 항목이 `[OK]`이면 다음 Phase로 진행합니다.
@@ -416,7 +416,7 @@ python data_gen/kafka_producer.py --rows ${DEMO_ROWS} --rate ${DEMO_RATE}
 ### 5-3. Spark Ingest 실행 (Kafka → Raw Iceberg)
 
 ```bash
-bash scripts/run_ingest.sh
+bash scripts/02_run_ingest.sh
 ```
 
 **cron 등록 (1분마다 자동 실행):**
@@ -431,7 +431,7 @@ crontab -e
 
 **사용법:**
 ```
-scripts/run_etl.sh [YYYY-MM-DD]
+scripts/03_run_etl.sh [YYYY-MM-DD]
 ```
 
 | 파라미터 | 필수 여부 | 기본값 | 설명 |
@@ -441,15 +441,15 @@ scripts/run_etl.sh [YYYY-MM-DD]
 **예제:**
 ```bash
 # 어제 날짜 자동 처리 (파라미터 생략)
-bash scripts/run_etl.sh
+bash scripts/03_run_etl.sh
 
 # 특정 날짜 처리
-bash scripts/run_etl.sh 2026-06-07
+bash scripts/03_run_etl.sh 2026-06-07
 
 # 과거 날짜 재처리 (backfill)
-bash scripts/run_etl.sh 2026-06-01
-bash scripts/run_etl.sh 2026-06-02
-bash scripts/run_etl.sh 2026-06-03
+bash scripts/03_run_etl.sh 2026-06-01
+bash scripts/03_run_etl.sh 2026-06-02
+bash scripts/03_run_etl.sh 2026-06-03
 ```
 
 > **참고:** 지정한 날짜(`dt`)에 `sbi_raw.transactions`에 데이터가 없으면  
@@ -460,13 +460,13 @@ bash scripts/run_etl.sh 2026-06-03
 ```bash
 crontab -e
 # 추가:
-0 1 * * * /root/sbi-fraud-detection-pipeline/scripts/run_etl.sh >> /var/log/sbi-etl.log 2>&1
+0 1 * * * /root/sbi-fraud-detection-pipeline/scripts/03_run_etl.sh >> /var/log/sbi-etl.log 2>&1
 ```
 
 ### 5-5. 결과 확인
 
 ```bash
-bash scripts/run_report.sh
+bash scripts/04_run_report.sh
 ```
 
 또는 Hue(`https://<HS2_HOST>:8889`) SQL Editor에서 `report/fraud_report.sql` 실행.
@@ -486,7 +486,7 @@ GEO_ANOMALY   |      7   |    4,100,000
 [2] SMM               → sbi-transactions-raw 메시지 수신율 그래프
 [3] YARN ResourceMgr  → Spark Job 실행 중 확인
 [4] Hue (Hive)        → sbi_raw.transactions 건수 증가 확인
-[5] Spark ETL 실행    → bash scripts/run_etl.sh
+[5] Spark ETL 실행    → bash scripts/03_run_etl.sh
 [6] Hue (Impala)      → fraud_alerts 쿼리 → 사기 탐지 결과 확인
 ```
 
@@ -517,7 +517,7 @@ ln -sf config/env.internal.conf config/env.conf
 
 ```bash
 source config/env.conf
-bash scripts/verify_env.sh
+bash scripts/01_verify_env.sh
 bash infra/01_kafka_setup.sh
 bash infra/02_ozone_setup.sh
 envsubst '${OZONE_OM_SERVICE_ID} ${OZONE_VOLUME}' < infra/03_iceberg_ddl.sql \
@@ -541,9 +541,9 @@ OS Kerberos 티켓 캐시(ccache)에 TGT 저장
 | 컴포넌트 | 인증 방식 |
 |---------|---------|
 | `kafka_producer.py` | 스크립트 내 `kinit` 자동 호출 |
-| `scripts/run_ingest.sh` | `source config/env.conf` 후 `kinit` 자동 호출 |
-| `scripts/run_etl.sh` | 동일 |
-| `scripts/run_report.sh` | 동일 |
+| `scripts/02_run_ingest.sh` | `source config/env.conf` 후 `kinit` 자동 호출 |
+| `scripts/03_run_etl.sh` | 동일 |
+| `scripts/04_run_report.sh` | 동일 |
 | Kafka CLI (`infra/*.sh`) | 스크립트 내 `kinit` 자동 호출 |
 | Spark (YARN) | `--keytab`, `--principal`로 YARN이 처리 |
 | Hue | 브라우저 로그인 시 Kerberos 자동 처리 |
@@ -630,7 +630,7 @@ OS Kerberos 티켓 캐시(ccache)에 TGT 저장
 해결:
   source config/env.conf
   rm -f "${KAFKA_OFFSET_FILE}"
-  bash scripts/run_ingest.sh
+  bash scripts/02_run_ingest.sh
 ```
 
 ---

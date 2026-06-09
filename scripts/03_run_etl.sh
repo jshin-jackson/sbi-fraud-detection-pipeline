@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 # ================================================================
-# run_ingest.sh — Kafka → Raw Iceberg Spark Batch Job 실행
-# 1분마다 cron으로 스케줄링하여 실행합니다.
+# 03_run_etl.sh — Raw Iceberg → Curated Iceberg Spark ETL 실행
 #
 # 사용법:
-#   chmod +x scripts/run_ingest.sh
-#   scripts/run_ingest.sh
-#
-# cron 등록 (1분마다):
-#   * * * * * /root/sbi-fraud-detection-pipeline/scripts/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
+#   scripts/03_run_etl.sh [YYYY-MM-DD]
+#   scripts/03_run_etl.sh 2024-01-07   # 특정 날짜 처리
+#   scripts/03_run_etl.sh               # 기본: 어제 날짜 자동 처리
 # ================================================================
 set -euo pipefail
 
@@ -23,17 +20,17 @@ if [ ! -f "${ROOT_DIR}/config/env.conf" ]; then
 fi
 source "${ROOT_DIR}/config/env.conf"
 
+# 처리 날짜 (인자 없으면 어제)
+DT="${1:-$(date -d 'yesterday' '+%Y-%m-%d' 2>/dev/null || date -v-1d '+%Y-%m-%d')}"
+
 echo ""
 echo "================================================================"
-echo " SBI Fraud Ingest (ENV: ${ENV_NAME}) — $(date)"
+echo " SBI Fraud ETL (ENV: ${ENV_NAME}) — dt=${DT}"
 echo "================================================================"
 
 # Kerberos 티켓 갱신
-echo "[INFO] kinit 실행: ${PRINCIPAL}"
 kinit -kt "${KEYTAB}" "${PRINCIPAL}"
-klist
 
-# Ozone filesystem JAR을 드라이버 JVM 시작 전에 클래스패스에 추가
 export SPARK_CLASSPATH="${SPARK_OZONE_JARS}"
 
 # spark-defaults.conf 의 ${OZONE_OM_SERVICE_ID} / ${OZONE_OM_ADDRESS} 를 실제 값으로 치환
@@ -48,4 +45,6 @@ spark-submit \
   --principal "${PRINCIPAL}" \
   --keytab "${KEYTAB}" \
   --properties-file "${SPARK_CONF_TMP}" \
-  "${ROOT_DIR}/spark/stream/raw_ingest_job.py"
+  --py-files "${ROOT_DIR}/spark/etl/rules.py" \
+  "${ROOT_DIR}/spark/etl/fraud_detection_etl.py" \
+  --dt "${DT}"

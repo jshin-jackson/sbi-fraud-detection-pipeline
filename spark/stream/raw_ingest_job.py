@@ -13,7 +13,7 @@ Spark Batch Job — Kafka 원시 이벤트 → sbi_raw.transactions (Iceberg)
       spark/stream/raw_ingest_job.py
 
 cron 등록 (1분마다):
-    * * * * * /root/sbi-fraud-detection-pipeline/scripts/run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
+    * * * * * /root/sbi-fraud-detection-pipeline/scripts/02_run_ingest.sh >> /var/log/sbi-ingest.log 2>&1
 
 환경변수:
     KAFKA_BROKERS     Kafka 브로커 주소
