@@ -20,8 +20,7 @@ cron 등록 (1분마다):
     KAFKA_TOPIC       대상 토픽 (기본: sbi-fd-transactions-raw)
     KAFKA_KEYTAB      Kerberos keytab 경로
     KAFKA_PRINCIPAL   Kerberos 주체
-    KAFKA_TRUSTSTORE  SSL truststore JKS 경로 (Java Kafka 클라이언트용)
-    KAFKA_TRUSTSTORE_PW SSL truststore 패스워드
+    TRUSTSTORE_JKS    SSL truststore JKS 경로 (env.conf 의 TRUSTSTORE_JKS)
     OFFSET_FILE       Kafka 오프셋 저장 파일 경로 (기본: /root/sbi-kafka-offsets.json)
 
 # Air-gapped 환경: --packages 사용 불가. conf/spark_iceberg.conf 의 spark.jars 로 로컬 JAR 지정.
@@ -56,8 +55,8 @@ KAFKA_BROKERS      = os.environ.get("KAFKA_BROKERS",      "")
 KAFKA_TOPIC        = os.environ.get("KAFKA_TOPIC",        "sbi-fd-transactions-raw")
 KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       os.environ.get("KEYTAB",    ""))
 KAFKA_PRINCIPAL    = os.environ.get("KAFKA_PRINCIPAL",    os.environ.get("PRINCIPAL", ""))
-KAFKA_TRUSTSTORE   = os.environ.get("KAFKA_TRUSTSTORE",   "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-in_cluster_truststore.jks")
-KAFKA_TRUSTSTORE_PW = os.environ.get("KAFKA_TRUSTSTORE_PW", "")
+KAFKA_TRUSTSTORE   = os.environ.get("KAFKA_TRUSTSTORE",   os.environ.get("TRUSTSTORE_JKS", ""))
+KAFKA_TRUSTSTORE_PW = os.environ.get("TRUSTSTORE_PW",    "")
 
 ICEBERG_TABLE = "sbi_raw.transactions"
 OFFSET_FILE   = os.environ.get("OFFSET_FILE", "/root/sbi-kafka-offsets.json")

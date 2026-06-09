@@ -56,7 +56,7 @@ fi
 # ------------------------------------------------------------------
 section "3. Auto-TLS 인증서 파일 확인"
 # ------------------------------------------------------------------
-for cert_var in TRUSTSTORE_JKS INCLUSTER_TRUSTSTORE_JKS CA_PEM; do
+for cert_var in TRUSTSTORE_JKS CA_PEM; do
   cert_path="${!cert_var}"
   if [ -f "${cert_path}" ]; then
     ok "${cert_var}: ${cert_path}"
