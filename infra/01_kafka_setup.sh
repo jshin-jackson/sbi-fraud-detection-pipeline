@@ -23,8 +23,8 @@ PRINCIPAL="${PRINCIPAL:-}"
 TRUSTSTORE_PATH="${TRUSTSTORE_PATH:-/var/lib/cloudera-scm-agent/agent-cert/cm-auto-global_truststore.jks}"
 TRUSTSTORE_PASS="${TRUSTSTORE_PW:?TRUSTSTORE_PW 가 설정되지 않았습니다. source config/env.conf 를 먼저 실행하세요}"
 
-TOPIC_RAW="sbi-transactions-raw"
-TOPIC_DLQ="sbi-transactions-dlq"   # Dead Letter Queue
+TOPIC_RAW="sbi-fd-transactions-raw"
+TOPIC_DLQ="sbi-fd-transactions-dlq"   # Dead Letter Queue
 
 PARTITIONS=6
 REPLICATION=3
@@ -186,13 +186,13 @@ cat <<'ACL_EXAMPLE'
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $CLIENT_PROPS \
   --add --allow-principal User:systest \
-  --operation Write --topic sbi-transactions-raw
+  --operation Write --topic sbi-fd-transactions-raw
 
 # Consumer ACL
 kafka-acls.sh --bootstrap-server $BOOTSTRAP \
   --command-config $CLIENT_PROPS \
   --add --allow-principal User:systest \
-  --operation Read --topic sbi-transactions-raw \
+  --operation Read --topic sbi-fd-transactions-raw \
   --group systest-stream-group
 ACL_EXAMPLE
 

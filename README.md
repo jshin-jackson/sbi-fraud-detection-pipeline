@@ -233,8 +233,8 @@ bash infra/01_kafka_setup.sh
 ```
 
 생성되는 토픽:
-- `sbi-transactions-raw` — 거래 원시 데이터 (파티션 6개)
-- `sbi-transactions-dlq` — Dead Letter Queue (파티션 2개)
+- `sbi-fd-transactions-raw` — 거래 원시 데이터 (파티션 6개)
+- `sbi-fd-transactions-dlq` — Dead Letter Queue (파티션 2개)
 
 ### 2-2. Ozone 볼륨/버킷 생성
 
@@ -285,7 +285,7 @@ curl -k -u admin:RANGER_ADMIN_PW \
 
 | 서비스 | 정책명 | 리소스 | 권한 |
 |--------|--------|--------|------|
-| cm_kafka | `sbi-fraud-demo-kafka-access` | `sbi-transactions-raw`, `sbi-transactions-dlq` | All |
+| cm_kafka | `sbi-fraud-demo-kafka-access` | `sbi-fd-transactions-raw`, `sbi-fd-transactions-dlq` | All |
 | cm_ozone | `sbi-fraud-demo-ozone-access` | `volume=firstvolume`, `bucket=*`, `key=*` | All (systest, hive, impala) |
 | cm_hive | `sbi-fraud-demo-hive-access` | `database=sbi_raw,sbi_curated`, `table=*`, `column=*` | All |
 
@@ -483,7 +483,7 @@ GEO_ANOMALY   |      7   |    4,100,000
 
 ```
 [1] Cloudera Manager  → 서비스 상태 Green 확인
-[2] SMM               → sbi-transactions-raw 메시지 수신율 그래프
+[2] SMM               → sbi-fd-transactions-raw 메시지 수신율 그래프
 [3] YARN ResourceMgr  → Spark Job 실행 중 확인
 [4] Hue (Hive)        → sbi_raw.transactions 건수 증가 확인
 [5] Spark ETL 실행    → bash scripts/03_run_etl.sh

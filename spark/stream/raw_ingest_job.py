@@ -17,7 +17,7 @@ cron 등록 (1분마다):
 
 환경변수:
     KAFKA_BROKERS     Kafka 브로커 주소
-    KAFKA_TOPIC       대상 토픽 (기본: sbi-transactions-raw)
+    KAFKA_TOPIC       대상 토픽 (기본: sbi-fd-transactions-raw)
     KAFKA_KEYTAB      Kerberos keytab 경로
     KAFKA_PRINCIPAL   Kerberos 주체
     KAFKA_TRUSTSTORE  SSL truststore JKS 경로 (Java Kafka 클라이언트용)
@@ -53,7 +53,7 @@ logger = logging.getLogger("SBI-RawIngest")
 # 환경 설정
 # ---------------------------------------------------------------------------
 KAFKA_BROKERS      = os.environ.get("KAFKA_BROKERS",      "")
-KAFKA_TOPIC        = os.environ.get("KAFKA_TOPIC",        "sbi-transactions-raw")
+KAFKA_TOPIC        = os.environ.get("KAFKA_TOPIC",        "sbi-fd-transactions-raw")
 KAFKA_KEYTAB       = os.environ.get("KAFKA_KEYTAB",       os.environ.get("KEYTAB",    ""))
 KAFKA_PRINCIPAL    = os.environ.get("KAFKA_PRINCIPAL",    os.environ.get("PRINCIPAL", ""))
 KAFKA_TRUSTSTORE   = os.environ.get("KAFKA_TRUSTSTORE",   "/var/lib/cloudera-scm-agent/agent-cert/cm-auto-in_cluster_truststore.jks")

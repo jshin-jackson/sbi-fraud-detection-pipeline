@@ -12,12 +12,12 @@
       "name": "sbi-fraud-demo-kafka-access",
       "policyType": 0,
       "policyPriority": 0,
-      "description": "SBI Fraud Demo — systest: sbi-transactions-* 토픽 전체 권한 (produce/consume/admin)",
+      "description": "SBI Fraud Demo — systest: sbi-fd-transactions-* 토픽 전체 권한 (produce/consume/admin)",
       "isAuditEnabled": true,
       "isEnabled": true,
       "resources": {
         "topic": {
-          "values": ["sbi-transactions-raw", "sbi-transactions-dlq"],
+          "values": ["sbi-fd-transactions-raw", "sbi-fd-transactions-dlq"],
           "isExcludes": false,
           "isRecursive": false
         }
