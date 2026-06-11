@@ -8,6 +8,7 @@ build/
 .venv/
 venv/
 wheels/
+wheels.tar
 
 # 데이터 파일 (합성 데이터는 커밋하지 않음)
 *.csv

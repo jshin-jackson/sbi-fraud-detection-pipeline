@@ -133,10 +133,12 @@ sbi-fraud-detection-pipeline/
 
 | 파일 | 패키지 | 사용 경우 |
 |------|--------|----------|
-| `requirements.txt` | kafka-python, pandas, numpy, python-snappy, **sdv** | SDV로 합성 데이터 생성 포함 전체 기능 |
-| `requirements-producer.txt` | kafka-python, pandas, numpy, python-snappy | `kafka_producer.py --input` 전용, **SDV 불필요** |
+| `requirements.txt` | gssapi, kafka-python, pandas, numpy, python-snappy, **sdv** | SDV로 합성 데이터 생성 포함 전체 기능 |
+| `requirements-producer.txt` | gssapi, kafka-python, pandas, numpy, python-snappy | `kafka_producer.py --input` 전용, **SDV 불필요** |
 
 > **SDV wheels 반입이 어려운 경우:** `requirements-producer.txt`를 사용하고, CSV 파일은 인터넷이 되는 머신에서 미리 생성해 클러스터로 복사하세요.
+
+> **PRD 클러스터 (yum install 금지):** `gssapi`를 pip wheel로 반입합니다. `gcc`/`python3-devel`/`krb5-devel`은 **Bastion에서 wheel 빌드 시에만** 필요하며, PRD 노드에서는 `pip install`만 실행합니다.
 
 ---
 
@@ -148,29 +150,24 @@ sbi-fraud-detection-pipeline/
 **RHEL 9.6 Bastion 머신에서 (인터넷 연결, 1회만):**
 
 ```bash
-# 빌드 도구 + gssapi 시스템 패키지 설치
-sudo yum install -y gcc python3-devel krb5-devel python3-gssapi
+# gssapi wheel 빌드용 (Bastion에서만 실행)
+sudo yum install -y gcc python3-devel krb5-devel
 
-# venv 생성 (시스템 gssapi 공유)
-python3 -m venv --system-site-packages /tmp/sbi-venv
+python3 -m venv /tmp/sbi-venv
 source /tmp/sbi-venv/bin/activate
 pip install --upgrade pip
 
-# 패키지 다운로드
+# 패키지 다운로드 (gssapi wheel 포함)
 pip download -r data_gen/requirements.txt -d ./wheels/
 
 tar cf sbi-wheels.tar wheels/
 scp sbi-wheels.tar systest@<클러스터-호스트>:/tmp/
 ```
 
-**클러스터 노드에서 (오프라인 설치):**
+**클러스터 노드에서 (오프라인 설치 — yum install 불필요):**
 
 ```bash
-# 시스템 패키지 설치 (gssapi는 yum으로 설치 — pip wheels 불필요)
-# gettext: envsubst 명령 제공 (infra/03_iceberg_ddl.sh 실행에 필요)
-sudo yum install -y gcc python3-devel krb5-devel python3-gssapi gettext
-
-python3 -m venv --system-site-packages /tmp/sbi-venv
+python3 -m venv /tmp/sbi-venv
 source /tmp/sbi-venv/bin/activate
 
 cd /tmp && tar xf sbi-wheels.tar
@@ -179,6 +176,8 @@ pip install --no-index --find-links=./wheels/ -r /root/sbi-fraud-detection-pipel
 # 최종 확인
 python3 -c "import gssapi, kafka, sdv, pandas, numpy; print('All OK')"
 ```
+
+> **참고:** `infra/03_iceberg_ddl.sh` 실행에 필요한 `gettext`(envsubst)는 별도입니다. PRD에서 yum이 금지된 경우 golden image에 사전 포함되어 있어야 합니다.
 
 ---
 
@@ -197,24 +196,29 @@ scp /tmp/txn.csv systest@<클러스터-호스트>:/tmp/
 **Step 2 — Bastion (RHEL 9.6)에서 최소 wheels 다운로드 및 전송:**
 
 ```bash
+# gssapi wheel 빌드용 (Bastion에서만 실행)
+sudo yum install -y gcc python3-devel krb5-devel
+
+python3 -m venv /tmp/sbi-venv
+source /tmp/sbi-venv/bin/activate
+pip install --upgrade pip
+
 pip download -r data_gen/requirements-producer.txt -d ./wheels-producer/
 tar cf sbi-wheels-producer.tar wheels-producer/
 scp sbi-wheels-producer.tar systest@<클러스터-호스트>:/tmp/
 ```
 
-**Step 3 — 클러스터 노드에서 오프라인 설치:**
+**Step 3 — 클러스터 노드(PRD)에서 오프라인 설치 — yum install 불필요:**
 
 ```bash
-sudo yum install -y gcc python3-devel krb5-devel python3-gssapi gettext
-
-python3 -m venv --system-site-packages /tmp/sbi-venv
+python3 -m venv /tmp/sbi-venv
 source /tmp/sbi-venv/bin/activate
 
 cd /tmp && tar xf sbi-wheels-producer.tar
 pip install --no-index --find-links=./wheels-producer/ -r /root/sbi-fraud-detection-pipeline/data_gen/requirements-producer.txt
 
 # 최종 확인
-python3 -c "import kafka, pandas, numpy, snappy; print('All OK')"
+python3 -c "import gssapi, kafka, pandas, numpy, snappy; print('All OK')"
 ```
 
 **Step 4 — CSV로 Kafka 전송:**
